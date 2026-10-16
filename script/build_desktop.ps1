@@ -12,9 +12,12 @@ dotnet publish Desktop/Noise.Desktop.csproj -c Release -r win-x64 --self-contain
 if ($LASTEXITCODE) { throw 'Publish failed' }
 python script/bootstrap_desktop.py --output $stage
 if ($LASTEXITCODE) { throw 'Native build failed' }
+python script/verify_windows_package.py $stage
+if ($LASTEXITCODE) { throw 'Native dependency verification failed' }
 dotnet (Join-Path $stage 'Noise.dll') --self-test
 if ($LASTEXITCODE) { throw 'DSP self-test failed' }
-$smoke = Start-Process -FilePath (Join-Path $stage 'Noise.exe') -ArgumentList '--smoke-ui' -PassThru -Wait
+$smoke = Start-Process -FilePath (Join-Path $stage 'Noise.exe') -ArgumentList '--smoke-ui' -PassThru
+if (!$smoke.WaitForExit(30000)) { $smoke.Kill(); throw 'GUI smoke test timed out' }
 if ($smoke.ExitCode -ne 0 -or !(Test-Path (Join-Path $stage 'windows-controls.png'))) { throw 'Windows GUI smoke test failed' }
 Copy-Item (Join-Path $stage 'windows-controls.png') $dist
 Remove-Item (Join-Path $stage 'windows-controls.png')
