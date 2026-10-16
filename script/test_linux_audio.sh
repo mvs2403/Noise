@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 noise_stage="$1"
-noise_mode="${2:-all}"
+noise_mode="${2:-pulse}"
 noise_test_dir="$(mktemp -d)"
 export XDG_RUNTIME_DIR="$noise_test_dir/runtime"
 export NOISE_DATA_DIR="$noise_test_dir/data"
@@ -13,6 +13,7 @@ cleanup() {
 }
 trap cleanup EXIT
 if [ "$noise_mode" = pipewire ]; then
+  unset PULSE_RUNTIME_PATH PULSE_STATE_PATH
   export PULSE_SERVER="unix:$XDG_RUNTIME_DIR/pulse/native"
   pipewire >"$noise_test_dir/pipewire.log" 2>&1 & noise_pids+=("$!")
   pipewire-pulse >"$noise_test_dir/pulse.log" 2>&1 & noise_pids+=("$!")

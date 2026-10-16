@@ -10,7 +10,7 @@ dotnet publish Desktop/Noise.Desktop.csproj -c Release -r linux-x64 --self-conta
 python3 script/bootstrap_desktop.py --output "$noise_stage"
 dotnet "$noise_stage/Noise.dll" --self-test
 # The disposable CI audio server contains only generated fixtures, never user audio.
-./script/test_linux_audio.sh "$noise_stage"
+./script/test_linux_audio.sh "$noise_stage" pulse
 dbus-run-session -- xvfb-run -a "$noise_stage/Noise" --smoke-ui
 cp "$noise_stage/windows-controls.png" "$noise_dist/linux-controls.png"
 rm "$noise_stage/windows-controls.png"
