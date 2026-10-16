@@ -1,11 +1,13 @@
 # Noise for Windows
 
-Windows 11 x64. Private beta. Download **Noise-0.2.0-windows-x64-setup.exe**
-or the portable ZIP from [the Windows release](https://github.com/mvs2403/Noise/releases/tag/v0.2.0).
+Windows 11 x64. Private beta. Download the setup EXE or portable ZIP from
+[the releases](https://github.com/mvs2403/Noise/releases).
 The installer runs per user and includes the .NET runtime, all four filters, and
 the models. No Python, Rust, Visual Studio, or administrator rights are needed
 to install Noise itself. This beta installer is unsigned; Windows may show its
 publisher warning. It has no automatic startup entry.
+
+Quit the running Noise instance before installing an update.
 
 ## Install audio routing devices
 

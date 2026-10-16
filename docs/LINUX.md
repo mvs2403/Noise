@@ -70,5 +70,6 @@ these dependencies.
 Build on Ubuntu 24.04 x64 with .NET SDK 10, Python 3.12+, Rust/rustup, CMake,
 pkg-config, libpulse-dev, patchelf, PulseAudio, Xvfb, and dbus-x11 using
 `script/build_desktop_linux.sh`. Routing tests must run only in a disposable
-audio session with `NOISE_TEST_AUDIO=1`; they generate audio and temporarily
-change that session's default output. Packages are written to `dist/desktop`.
+audio session with `NOISE_TEST_AUDIO=1` and a separate `NOISE_DATA_DIR`; the build
+script creates both automatically. They generate audio and temporarily change
+only that isolated server's output. Packages are written to `dist/desktop`.

@@ -28,7 +28,7 @@ internal static class LinuxRoutingTest
     }
     private static async Task RunAsync()
     {
-        if (!OperatingSystem.IsLinux() || Environment.GetEnvironmentVariable("NOISE_TEST_AUDIO") != "1")
+        if (!OperatingSystem.IsLinux() || Environment.GetEnvironmentVariable("NOISE_TEST_AUDIO") != "1" || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOISE_DATA_DIR")))
             throw new InvalidOperationException("Run routing tests only on a disposable audio server with NOISE_TEST_AUDIO=1.");
         string token = Guid.NewGuid().ToString("N")[..10], originalDefault = PulseCommand.Pactl("get-default-sink");
         var modules = new List<string>(); var fixtures = new List<Fixture>(); var audio = new LinuxAudio();

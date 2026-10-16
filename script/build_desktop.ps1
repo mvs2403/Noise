@@ -23,6 +23,7 @@ Copy-Item (Join-Path $stage 'windows-controls.png') $dist
 Remove-Item (Join-Path $stage 'windows-controls.png')
 Copy-Item docs/WINDOWS.md (Join-Path $stage 'START-HERE.md')
 Copy-Item README.md, VERSION $stage
+Copy-Item docs (Join-Path $stage 'docs') -Recurse -Force
 Compress-Archive -Path "$stage/*" -DestinationPath (Join-Path $dist "Noise-$version-windows-x64.zip") -Force
 if (!(Get-Command makensis -ErrorAction SilentlyContinue)) {
     choco install nsis --no-progress -y

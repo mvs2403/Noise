@@ -21,7 +21,7 @@ public sealed class Settings
     public string IncomingDevice { get; set; } = "";
     public string MicrophoneDevice { get; set; } = "";
     public string CleanMicrophoneDevice { get; set; } = "";
-    public static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Noise", "settings.json");
+    public static string FilePath => Path.Combine(Environment.GetEnvironmentVariable("NOISE_DATA_DIR") ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Noise", "settings.json");
     public static Settings Load()
     {
         try

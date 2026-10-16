@@ -29,7 +29,7 @@ def main():
                 "signing": "unsigned" if args.platform.startswith("windows") else "not signed",
                 "verification": ["four native engines", "bounded queue", "exact bypass", "GUI launch"],
                 "runtime_and_models": native, "artifacts": artifacts}
-    (args.output / "release-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (args.output / ("release-manifest-" + args.platform + ".json")).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__": main()
