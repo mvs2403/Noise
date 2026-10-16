@@ -1,6 +1,6 @@
 #include "NoiseRuntime.h"
 #include <pulse/pulseaudio.h>
-#include <sys/prctl.h>
+#include <sys/syscall.h>
 #include <poll.h>
 #include <unistd.h>
 #include <algorithm>
@@ -8,6 +8,7 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#include <cerrno>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -129,8 +130,17 @@ struct Pulse {
 }
 
 int main(int argc, char **argv) {
-    auto parent = getppid(); prctl(PR_SET_PDEATHSIG, SIGKILL);
-    if (parent == 1 || getppid() != parent) return 1;
+    auto parent = getppid();
+    if (parent == 1) return 1;
+    // A pidfd watches the whole .NET process. PR_SET_PDEATHSIG would instead
+    // follow the short-lived thread-pool thread that launched this helper.
+    int parentFd = int(syscall(SYS_pidfd_open, parent, 0));
+    if (parentFd < 0) return 1;
+    std::thread([parentFd] {
+        pollfd watched{parentFd, POLLIN, 0};
+        while (poll(&watched, 1, -1) < 0 && errno == EINTR) {}
+        _exit(0);
+    }).detach();
     try {
         std::unordered_map<std::string, std::string> args;
         for (int i = 1; i+1 < argc; i += 2) args[argv[i]] = argv[i+1];
