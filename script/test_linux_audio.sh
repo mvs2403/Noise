@@ -8,8 +8,13 @@ export NOISE_DATA_DIR="$noise_test_dir/data"
 mkdir -m 700 -p "$XDG_RUNTIME_DIR"
 noise_pids=()
 cleanup() {
+  noise_result=$?
+  if [ "$noise_result" -ne 0 ]; then
+    for noise_log in "$noise_test_dir/"*.log; do [ ! -f "$noise_log" ] || cat "$noise_log"; done
+  fi
   if [ "${#noise_pids[@]}" -gt 0 ]; then kill "${noise_pids[@]}" 2>/dev/null || true; fi
   rm -rf "$noise_test_dir"
+  return "$noise_result"
 }
 trap cleanup EXIT
 if [ "$noise_mode" = pipewire ]; then
@@ -25,7 +30,14 @@ if [ "$noise_mode" = pipewire ]; then
   done
   if [ "$noise_ready" = 0 ]; then cat "$noise_test_dir/"*.log; exit 1; fi
   pactl load-module module-null-sink sink_name=test_default rate=48000 channels=1 >/dev/null
-  pactl set-default-sink test_default
+  # Pulse can accept clients before WirePlumber creates default-device metadata.
+  # Wait for the policy manager as well as the protocol socket.
+  noise_ready=0
+  for noise_attempt in $(seq 1 100); do
+    if pactl set-default-sink test_default >"$noise_test_dir/default.log" 2>&1 && [ "$(pactl get-default-sink)" = test_default ]; then noise_ready=1; break; fi
+    sleep .1
+  done
+  if [ "$noise_ready" = 0 ]; then exit 1; fi
   NOISE_TEST_AUDIO=1 dotnet "$noise_stage/Noise.dll" --routing-self-test
 else
   export PULSE_RUNTIME_PATH="$noise_test_dir/pulse-runtime"
