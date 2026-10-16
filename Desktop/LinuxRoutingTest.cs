@@ -40,7 +40,15 @@ internal static class LinuxRoutingTest
         string appA = "noise.test.a." + token, appB = "noise.test.b." + token, appC = "noise.test.c." + token;
         try
         {
-            foreach (var name in new[] { a, b, mic }) modules.Add(PulseCommand.Pactl("load-module", "module-null-sink", "sink_name=" + name, "rate=48000", "channels=1"));
+            bool pipewire = PulseCommand.Pactl("info").Contains("PipeWire", StringComparison.OrdinalIgnoreCase);
+            foreach (var name in new[] { a, b, mic })
+            {
+                // Model real-time devices, rather than PulseAudio's two-second
+                // idle null sink (which deliberately exceeds the route's limit).
+                var args = new List<string> { "load-module", "module-null-sink", "sink_name=" + name, "rate=48000", "channels=1" };
+                if (!pipewire) args.Add("norewinds=1");
+                modules.Add(PulseCommand.Pactl(args.ToArray()));
+            }
             modules.Add(PulseCommand.Pactl("load-module", "module-remap-source", "master=" + mic + ".monitor", "source_name=" + source, "channels=1"));
             PulseCommand.Pactl("set-default-sink", a);
             fixtures.Add(new(appA, a, .03f)); fixtures.Add(new(appB, a, .02f)); fixtures.Add(new(appC, a, .01f));
