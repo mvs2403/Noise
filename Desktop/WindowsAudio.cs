@@ -10,6 +10,7 @@ internal sealed class WindowsAudio : IAudioBackend
 {
     private WindowsRoute? speaker, microphone;
     private Settings? settings;
+    private HashSet<int> capturedRoots = [];
     private string? error;
     private AudioApplication? lastApplication;
     public bool SpeakerRunning => speaker != null;
@@ -137,6 +138,7 @@ internal sealed class WindowsAudio : IAudioBackend
         var parents = Parents();
         var pids = sessions.Select(x => Root(x.Pid, x.Path, parents)).Distinct().ToArray();
         speaker = await WindowsRoute.Create(s.Speaker, pids, null, null);
+        capturedRoots = pids.ToHashSet();
     }
     public async Task StartMicrophone(Settings s)
     {
@@ -162,7 +164,10 @@ internal sealed class WindowsAudio : IAudioBackend
         {
             if (speaker != null && settings != null)
             {
-                ValidateEndpoints(settings, DefaultOutput()); SelectedSessions(settings);
+                ValidateEndpoints(settings, DefaultOutput());
+                var sessions = SelectedSessions(settings); var parents = Parents();
+                if (sessions.Any(s => !capturedRoots.Contains(Root(s.Pid, s.Path, parents))))
+                    return "A selected application started a new audio process. Reopen Choose applications and Apply, then restart filtering.";
                 if (speaker.Error != null) return speaker.Error;
             }
             if (microphone != null && settings?.CleanMicrophoneDevice == DefaultOutput())

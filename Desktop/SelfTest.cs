@@ -11,6 +11,18 @@ internal static class SelfTest
             for (int n = 0; n < 200; ++n)
             { Check(ring.Push(a), "ring push"); Check(ring.Pop(b) == 480 && a.SequenceEqual(b), "ring wrap"); }
             Check(!ring.Push(new float[12001]) && ring.Count == 0, "bounded overflow");
+            var s = new Settings { IncomingDevice = "in", CleanMicrophoneDevice = "mic" };
+            WindowsAudio.ValidateEndpoints(s, "headphones");
+            foreach (var conflict in new[] { "in", "mic" })
+            {
+                bool rejected = false;
+                try { WindowsAudio.ValidateEndpoints(s, conflict); } catch (InvalidOperationException) { rejected = true; }
+                Check(rejected, "virtual output feedback guard");
+            }
+            s.CleanMicrophoneDevice = "in";
+            bool duplicate = false;
+            try { WindowsAudio.ValidateEndpoints(s, "headphones"); } catch (InvalidOperationException) { duplicate = true; }
+            Check(duplicate, "separate incoming/microphone cables");
             for (int engine = 0; engine < 4; ++engine)
             {
                 using var processor = new NativeProcessor(engine);

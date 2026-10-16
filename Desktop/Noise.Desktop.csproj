@@ -15,6 +15,6 @@
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="NAudio.Wasapi" Version="3.2.0" />
-    <EmbeddedResource Include="../docs/images/noise-icon.png" Link="noise-icon.png" />
+    <EmbeddedResource Include="../docs/images/noise-icon.png" LogicalName="Noise.noise-icon.png" />
   </ItemGroup>
 </Project>

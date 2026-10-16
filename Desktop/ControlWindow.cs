@@ -22,8 +22,8 @@ internal sealed class ControlWindow : Window
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         var tabs = new TabControl { ItemsSource = new[] {
-            new TabItem { Header = "◖  Speaker", Content = Channel(settings.Speaker, false) },
-            new TabItem { Header = "♩  Microphone", Content = Channel(settings.Microphone, true) }
+            new TabItem { Header = "🔊  Speaker", Content = Channel(settings.Speaker, false) },
+            new TabItem { Header = "🎙  Microphone", Content = Channel(settings.Microphone, true) }
         }};
         var controls = Column(16);
         var heading = new DockPanel();

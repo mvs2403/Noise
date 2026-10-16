@@ -10,6 +10,8 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import json
+import xml.etree.ElementTree as ET
 from bootstrap import ROOT, CACHE, fetch, extract, DF_REV, HUSH_REV
 
 RN_REV = "70f1d256acd4b34a572f999a05c87bf00b67730d"
@@ -54,6 +56,44 @@ def models_and_licenses(output, rn, df, hush):
     shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", licenses / "THIRD_PARTY_NOTICES.md")
     # Native Rust dependencies' license texts accompany the complete source archives.
     shutil.copy2(ROOT / "Desktop/packages.lock.json", licenses / "NuGet-packages.lock.json")
+    collect_nuget_notices(licenses)
+
+
+def collect_nuget_notices(destination):
+    """Retain package-supplied licenses/notices and MIT copyright metadata."""
+    packages = json.loads((ROOT / "Desktop/packages.lock.json").read_text())["dependencies"]["net10.0"]
+    cache = Path(os.environ.get("NUGET_PACKAGES", str(Path.home() / ".nuget/packages")))
+    mit = """Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the \"Software\"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+"""
+    notices = []
+    for name, package in packages.items():
+        directory = cache / name.lower() / package["resolved"]
+        spec = ET.parse(directory / (name.lower() + ".nuspec")).getroot()
+        metadata = {e.tag.split("}")[-1]: e for e in spec.find("{*}metadata")}
+        def value(key):
+            return metadata[key].text or "" if key in metadata else ""
+        notices.append(f"{name} {package['resolved']}\n{value('copyright') or value('authors')}\nLicense: {value('license')}\n{value('projectUrl')}\n")
+        if value("license") == "MIT": notices.append(mit)
+        for path in directory.iterdir():
+            if path.is_file() and any(term in path.name.lower() for term in ("license", "notice", "copying")):
+                shutil.copy2(path, destination / (name + "-" + path.name))
+    (destination / "NuGet-NOTICES.txt").write_text("\n".join(notices), encoding="utf-8")
 
 
 def main():
