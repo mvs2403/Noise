@@ -55,10 +55,15 @@ internal sealed class ControlWindow : Window
     }
     private static StackPanel Column(double spacing = 12) => new() { Spacing = spacing };
     private static TextBlock Label(string text) => new() { Text = text, TextWrapping = TextWrapping.Wrap };
-    private static Button Button(string text, Func<Task> action)
+    private Button Button(string text, Func<Task> action)
     {
         var button = new Button { Content = text };
-        button.Click += async (_, _) => await action(); return button;
+        button.Click += async (_, _) =>
+        {
+            try { await action(); }
+            catch (Exception e) { status.Text = e.Message; }
+        };
+        return button;
     }
     private Control Channel(ChannelSettings channel, bool mic)
     {
