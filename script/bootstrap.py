@@ -29,7 +29,12 @@ def fetch(url, name, checksum=None):
     if not destination.exists():
         print(f"Downloading {name}", flush=True)
         temporary = destination.with_suffix(destination.suffix + ".partial")
-        run("curl", "-fL", "--retry", "3", "--silent", "--show-error", url, "-o", temporary)
+        # Git for Windows ships OpenSSL curl with its CA bundle. Prefer it over
+        # Schannel curl on build runners whose certificate-revocation host is offline.
+        # Certificate and host verification stay enabled with either implementation.
+        git_curl = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/mingw64/bin/curl.exe"
+        curl = git_curl if os.name == "nt" and git_curl.exists() else "curl"
+        run(curl, "-fL", "--retry", "3", "--retry-all-errors", "--silent", "--show-error", url, "-o", temporary)
         temporary.replace(destination)
     digest = hashlib.sha256(destination.read_bytes()).hexdigest()
     if checksum and digest != checksum:
