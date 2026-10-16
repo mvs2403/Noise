@@ -102,11 +102,15 @@ struct Pulse {
         pa_stream_set_write_callback(playback, render, this);
         pa_buffer_attr buffer{48000, 7680, 3840, 1920, 1920}; // bytes: 250/40/20/10/10 ms
         auto common = pa_stream_flags_t(PA_STREAM_ADJUST_LATENCY | PA_STREAM_DONT_MOVE);
-        if (pa_stream_connect_record(capture, source.c_str(), &buffer, common) < 0 ||
+        if (pa_stream_connect_record(capture, source.c_str(), &buffer, pa_stream_flags_t(common | PA_STREAM_START_CORKED)) < 0 ||
             pa_stream_connect_playback(playback, sink.c_str(), &buffer,
                 pa_stream_flags_t(common | PA_STREAM_START_CORKED), nullptr, nullptr) < 0) failed.store(true);
         while (!failed.load() && (pa_stream_get_state(capture) != PA_STREAM_READY || pa_stream_get_state(playback) != PA_STREAM_READY))
             pa_threaded_mainloop_wait(loop);
+        if (!failed.load()) {
+            if (auto op = pa_stream_cork(capture, 0, nullptr, nullptr)) pa_operation_unref(op);
+            else failed.store(true);
+        }
         pa_threaded_mainloop_unlock(loop);
         if (failed.load()) throw std::runtime_error("The selected audio device is unavailable.");
     }
@@ -171,7 +175,10 @@ int main(int argc, char **argv) {
                 }
             }
             if (audio.failed.load()) throw std::runtime_error("The audio server or selected device stopped. Restart this route.");
-            if (audio.input.count() > 12000) throw std::runtime_error("Audio processing fell behind. Choose a faster engine, such as RNNoise.");
+            if (audio.input.count() > 12000) {
+                std::cerr << "Capture queue: " << audio.input.count() << " samples; output queue: " << audio.output.count() << std::endl;
+                throw std::runtime_error("Audio processing fell behind. Choose a faster engine, such as RNNoise.");
+            }
             if (audio.output.count() >= 1440 || audio.input.count() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1)); continue;
             }

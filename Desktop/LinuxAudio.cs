@@ -264,7 +264,7 @@ internal sealed class LinuxAudio : IAudioBackend
             catch (Exception e) { error = e.Message; }
         }
     }
-    public string? PollError() { lock (gate) { var message = error ?? speaker?.Error ?? microphone?.Error; error = null; return message; } }
+    public string? PollError() { lock (gate) { var message = error ?? (speaker?.Error is {} se ? "Speaker: " + se : microphone?.Error is {} me ? "Microphone: " + me : null); error = null; return message; } }
     public async ValueTask DisposeAsync()
     {
         await Task.Run(() => { lock (gate) { StopMicrophoneCore(); if (recovered) { StopSpeakerCore(); RemoveModules(); journal = new(); } } });
@@ -297,7 +297,7 @@ internal sealed class LinuxRoute : IDisposable
                 if (parts.Length == 4 && long.TryParse(parts[1], out var frames) && double.TryParse(parts[2], CultureInfo.InvariantCulture, out var before) && double.TryParse(parts[3], CultureInfo.InvariantCulture, out var after)) Metrics = new(frames, before, after);
             }
         };
-        process.ErrorDataReceived += (_, _) => { }; // Drain library diagnostics without recording audio.
+        process.ErrorDataReceived += (_, e) => { if (Environment.GetEnvironmentVariable("NOISE_TEST_AUDIO") == "1" && e.Data != null) Console.Error.WriteLine(e.Data); };
         process.Exited += (_, _) => { if (!stopping) { Error ??= "The audio route stopped. Restart filtering."; ready.TrySetException(new InvalidOperationException(Error)); } };
         process.Start(); process.StandardInput.AutoFlush = true; process.BeginOutputReadLine(); process.BeginErrorReadLine();
     }
