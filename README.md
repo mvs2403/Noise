@@ -11,11 +11,24 @@ Noise cancellation for the apps you hear and the microphone others hear.</p>
   · <a href="#quick-start">Quick start</a>
   · <a href="docs/DEVELOPMENT.md">Developer guide</a>
 </p>
-<p align="center">Apple Silicon · macOS 14.2+ · Private beta 0.1.0</p>
+<p align="center">macOS 14.2+ · Windows 11 x64 · Private beta</p>
 
-Noise processes call audio locally on your Mac. Clean the sound arriving from
+Noise processes call audio locally on your device. Clean the sound arriving from
 Teams, Zoom, a browser, or several apps together, and optionally send a cleaned
 microphone to your call app. Each direction has independent controls.
+
+## Downloads
+
+| Platform | Package | Setup |
+| --- | --- | --- |
+| macOS 14.2+, Apple Silicon | [DMG · 0.1.0](https://github.com/mvs2403/Noise/releases/download/v0.1.0/Noise-0.1.0-apple-silicon.dmg) | [Mac quick start](#quick-start) |
+| Windows 11, x64 | [Installer · 0.2.0](https://github.com/mvs2403/Noise/releases/download/v0.2.0/Noise-0.2.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/mvs2403/Noise/releases/download/v0.2.0/Noise-0.2.0-windows-x64.zip) | [Windows routing guide](docs/WINDOWS.md) |
+
+Windows uses installed virtual audio devices. Two independent cable pairs are
+needed for both directions together; drivers are installed separately. The
+installer includes the filters and .NET runtime and is unsigned. Download links
+require access to this private repository. The screenshots and Mac instructions
+below show the native macOS app; Windows has a matching two-tab tray panel.
 
 <table>
   <tr>

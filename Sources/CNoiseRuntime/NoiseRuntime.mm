@@ -3,16 +3,12 @@
 #import <CoreAudio/AudioHardwareTapping.h>
 #include <AudioToolbox/AudioToolbox.h>
 #include "NoiseRuntime.h"
-#include "SherpaAPI.h"
-#include "MainSpeakerDenoiser.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstring>
-#include <deque>
-#include <dlfcn.h>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -32,17 +28,6 @@ void check(OSStatus status, const char *operation) {
         throw std::runtime_error(std::string(operation) + " (Core Audio " + std::to_string(status) + ")");
     }
 }
-template<class T> T symbol(void *lib, const char *name) {
-    auto address = dlsym(lib, name);
-    if (!address) throw std::runtime_error(std::string("The installed runtime is missing ") + name);
-    return reinterpret_cast<T>(address);
-}
-void *openLibrary(const std::string &path) {
-    void *lib = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!lib) throw std::runtime_error(std::string("Cannot load engine: ") + dlerror());
-    return lib;
-}
-
 // One producer and one consumer. Neither side ever changes the other's cursor.
 // An overloaded producer drops the NEW block; it never overwrites a live read.
 class Ring {
@@ -102,179 +87,8 @@ AudioUnit newHALUnit() {
 }
 }
 
-struct NRDenoiser {
-    int kind;
-    std::unique_ptr<MainSpeakerDenoiser> mainSpeaker;
-    void *library = nullptr;
-    void *state = nullptr;
-    const SherpaOnnxOnlineSpeechDenoiser *sherpa = nullptr;
-    decltype(&SherpaOnnxOnlineSpeechDenoiserRun) sherpaRun = nullptr;
-    decltype(&SherpaOnnxDestroyDenoisedAudio) sherpaFreeAudio = nullptr;
-    decltype(&SherpaOnnxDestroyOnlineSpeechDenoiser) sherpaDestroy = nullptr;
-    float (*rnProcess)(void *, float *, const float *) = nullptr;
-    void (*rnDestroy)(void *) = nullptr;
-    float (*dfProcess)(void *, float *, float *) = nullptr;
-    void (*dfDestroy)(void *) = nullptr;
-    std::deque<float> pending;
-    int emptyFrames = 0;
-    float speechProbability = 0;
-
-    NRDenoiser(int engine, const std::string &libraries, const std::string &models) : kind(engine) {
-        try {
-            if (kind == NR_MAIN_SPEAKER) {
-                mainSpeaker = std::make_unique<MainSpeakerDenoiser>(libraries.c_str(), models.c_str());
-            } else if (kind == NR_DPDFNET) {
-                library = openLibrary(libraries + "/libsherpa-onnx-c-api.dylib");
-                auto create = symbol<decltype(&SherpaOnnxCreateOnlineSpeechDenoiser)>(library, "SherpaOnnxCreateOnlineSpeechDenoiser");
-                sherpaRun = symbol<decltype(sherpaRun)>(library, "SherpaOnnxOnlineSpeechDenoiserRun");
-                sherpaFreeAudio = symbol<decltype(sherpaFreeAudio)>(library, "SherpaOnnxDestroyDenoisedAudio");
-                sherpaDestroy = symbol<decltype(sherpaDestroy)>(library, "SherpaOnnxDestroyOnlineSpeechDenoiser");
-                SherpaOnnxOnlineSpeechDenoiserConfig config{};
-                const auto path = models + "/dpdfnet2_48khz_hr.onnx";
-                config.model.dpdfnet.model = path.c_str();
-                config.model.num_threads = 1;
-                config.model.provider = "cpu";
-                if (![[NSFileManager defaultManager] fileExistsAtPath:@(path.c_str())])
-                    throw std::runtime_error("DPDFNet model is missing. Run script/bootstrap.py.");
-                sherpa = create(&config);
-                if (!sherpa) throw std::runtime_error("DPDFNet could not load its model.");
-            } else if (kind == NR_DEEPFILTERNET) {
-                library = openLibrary(libraries + "/libdf.dylib");
-                auto create = symbol<void *(*)(const char *, float, const char *)>(library, "df_create");
-                dfProcess = symbol<decltype(dfProcess)>(library, "df_process_frame");
-                dfDestroy = symbol<decltype(dfDestroy)>(library, "df_free");
-                auto frameLength = symbol<size_t (*)(void *)>(library, "df_get_frame_length");
-                const auto path = models + "/DeepFilterNet3_onnx.tar.gz";
-                if (![[NSFileManager defaultManager] fileExistsAtPath:@(path.c_str())])
-                    throw std::runtime_error("DeepFilterNet3 model is missing. Run script/bootstrap.py.");
-                state = create(path.c_str(), 100.0f, nullptr);
-                if (!state || frameLength(state) != blockSize)
-                    throw std::runtime_error("DeepFilterNet3 returned an unsupported frame size.");
-            } else if (kind == NR_RNNOISE) {
-                library = openLibrary(libraries + "/librnnoise.dylib");
-                auto create = symbol<void *(*)(void *)>(library, "rnnoise_create");
-                rnProcess = symbol<decltype(rnProcess)>(library, "rnnoise_process_frame");
-                rnDestroy = symbol<decltype(rnDestroy)>(library, "rnnoise_destroy");
-                state = create(nullptr);
-                if (!state) throw std::runtime_error("RNNoise could not initialize.");
-            } else throw std::runtime_error("Unknown noise cancellation engine.");
-        } catch (...) { close(); throw; }
-    }
-    void close() {
-        if (sherpa && sherpaDestroy) sherpaDestroy(sherpa);
-        if (state && kind == NR_DEEPFILTERNET && dfDestroy) dfDestroy(state);
-        if (state && kind == NR_RNNOISE && rnDestroy) rnDestroy(state);
-        state = nullptr; sherpa = nullptr;
-        // dlopen is reference counted; release our reference after inference state is destroyed.
-        if (library) dlclose(library);
-        library = nullptr;
-    }
-    ~NRDenoiser() { close(); }
-    int delaySamples() const {
-        if (kind == NR_MAIN_SPEAKER) return MainSpeakerDenoiser::delaySamples;
-        return kind == NR_DPDFNET ? 2400 : kind == NR_DEEPFILTERNET ? 1440 : 960;
-    }
-    bool process(const float *input, float *output) {
-        if (kind == NR_MAIN_SPEAKER) {
-            if (!mainSpeaker->process(input, output)) return false;
-        } else if (kind == NR_DPDFNET) {
-            const auto *audio = sherpaRun(sherpa, input, int32_t(blockSize), 48000);
-            // The streaming C API returns nullptr while its initial analysis window fills.
-            if (!audio) {
-                std::fill_n(output, blockSize, 0.0f);
-                return ++emptyFrames <= 20;
-            }
-            emptyFrames = 0;
-            if (audio->sample_rate != 48000 || audio->n < 0 || audio->n > 48000) {
-                sherpaFreeAudio(audio); return false;
-            }
-            for (int32_t i = 0; i < audio->n; ++i) pending.push_back(audio->samples[i]);
-            sherpaFreeAudio(audio);
-            for (size_t i = 0; i < blockSize; ++i) {
-                output[i] = pending.empty() ? 0.0f : pending.front();
-                if (!pending.empty()) pending.pop_front();
-            }
-        } else if (kind == NR_DEEPFILTERNET) {
-            std::array<float, blockSize> scratch;
-            std::copy_n(input, blockSize, scratch.data());
-            dfProcess(state, scratch.data(), output);
-        } else {
-            std::array<float, blockSize> scratch;
-            for (size_t i = 0; i < blockSize; ++i) scratch[i] = input[i] * 32768.0f;
-            speechProbability = rnProcess(state, output, scratch.data());
-            for (size_t i = 0; i < blockSize; ++i) output[i] /= 32768.0f;
-        }
-        for (size_t i = 0; i < blockSize; ++i) {
-            if (!std::isfinite(output[i])) return false;
-            output[i] = std::clamp(output[i], -1.0f, 1.0f);
-        }
-        return true;
-    }
-};
-
-// RNNoise's returned VAD probability is used only as a speech detector here.
-// DPDFNet/DeepFilterNet output is never passed through a second denoiser.
-struct SpeechDetector {
-    void *library = nullptr;
-    void *state = nullptr;
-    float (*processFrame)(void *, float *, const float *) = nullptr;
-    void (*destroyState)(void *) = nullptr;
-    explicit SpeechDetector(const char *libraries) {
-        try {
-            library = openLibrary(std::string(libraries) + "/librnnoise.dylib");
-            auto create = symbol<void *(*)(void *)>(library, "rnnoise_create");
-            processFrame = symbol<decltype(processFrame)>(library, "rnnoise_process_frame");
-            destroyState = symbol<decltype(destroyState)>(library, "rnnoise_destroy");
-            state = create(nullptr);
-            if (!state) throw std::runtime_error("The voice activity detector could not initialize.");
-        } catch (...) { close(); throw; }
-    }
-    void close() {
-        if (state && destroyState) destroyState(state);
-        if (library) dlclose(library);
-        state = nullptr; library = nullptr;
-    }
-    ~SpeechDetector() { close(); }
-    float probability(const float *input) {
-        std::array<float, blockSize> scaled, ignored;
-        for (size_t i = 0; i < blockSize; ++i) scaled[i] = input[i] * 32768.0f;
-        return processFrame(state, ignored.data(), scaled.data());
-    }
-};
-
-struct NRProcessor {
-    std::unique_ptr<NRDenoiser> denoiser;
-    std::unique_ptr<SpeechDetector> detector;
-    std::unique_ptr<NRVoiceLeveler, decltype(&nr_voice_leveler_destroy)> leveler{nr_voice_leveler_create(), nr_voice_leveler_destroy};
-    float gainDB = 0;
-    std::deque<float> dry;
-    float strength = 1, previousStrength = 1;
-    NRProcessor(int engine, const char *libraries, const char *models) {
-        if (!leveler) throw std::runtime_error("The voice leveler could not initialize.");
-        denoiser = std::make_unique<NRDenoiser>(engine, libraries, models);
-        if (engine != NR_RNNOISE) detector = std::make_unique<SpeechDetector>(libraries);
-        dry.resize(denoiser->delaySamples(), 0.f);
-    }
-    bool process(const float *input, float *output, bool levelingEnabled, bool bypass) {
-        if (!denoiser->process(input, output)) return false;
-        float probability = detector ? detector->probability(input) : denoiser->speechProbability;
-        for (size_t i = 0; i < blockSize; ++i) {
-            dry.push_back(input[i]);
-            const float aligned = dry.front(); dry.pop_front();
-            const float mix = previousStrength + (strength - previousStrength) * float(i + 1) / float(blockSize);
-            output[i] = aligned * (1 - mix) + output[i] * mix;
-        }
-        previousStrength = strength;
-        nr_voice_leveler_process(leveler.get(), output, probability, levelingEnabled);
-        gainDB = levelingEnabled && !bypass ? nr_voice_leveler_gain_db(leveler.get()) : 0;
-        // Original bypasses every processing stage; keep model state warm.
-        if (bypass) std::copy_n(input, blockSize, output);
-        return true;
-    }
-};
-
 struct NRPipeline {
-    std::unique_ptr<NRProcessor> processor;
+    std::unique_ptr<NRProcessor, decltype(&nr_processor_destroy)> processor{nullptr, nr_processor_destroy};
     Ring input, output;
     std::atomic<bool> stopped{false}, bypass{false}, failed{false};
     std::atomic<bool> leveling{true};
@@ -295,7 +109,9 @@ struct NRPipeline {
     double outputFraction = 0;
 
     NRPipeline(int engine, const char *libraries, const char *models) {
-        processor = std::make_unique<NRProcessor>(engine, libraries, models);
+        char error[1024]{};
+        processor.reset(nr_processor_create(engine, libraries, models, error, sizeof(error)));
+        if (!processor) throw std::runtime_error(error);
         worker = std::thread([this] { work(); });
     }
     ~NRPipeline() {
@@ -364,12 +180,12 @@ struct NRPipeline {
                         if (fill == blockSize) {
                             const auto begin = std::chrono::steady_clock::now();
                             bool ok = false;
-                            processor->strength = strength.load();
-                            try { ok = processor->process(frame.data(), clean.data(), leveling.load(), bypass.load()); } catch (...) { ok = false; }
+                            nr_processor_set_strength(processor.get(), strength.load());
+                            try { ok = nr_processor_process(processor.get(), frame.data(), clean.data(), leveling.load(), bypass.load()); } catch (...) { ok = false; }
                             const float elapsed = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - begin).count();
                             processingMs.store(processingMs.load() * .90f + elapsed * .10f);
                             if (!ok) { failed.store(true); clean.fill(0); }
-                            voiceGainDB.store(processor->gainDB);
+                            voiceGainDB.store(nr_processor_gain_db(processor.get()));
                             float peak = 0;
                             for (float sample : clean) peak = std::max(peak, std::abs(sample));
                             outputPeak.store(peak);
@@ -438,29 +254,6 @@ OSStatus tapCallback(AudioObjectID, const AudioTimeStamp *, const AudioBufferLis
 }
 
 extern "C" {
-NRDenoiser *nr_denoiser_create(int engine, const char *libraries, const char *models, char *error, int capacity) {
-    try { return new NRDenoiser(engine, libraries, models); }
-    catch (const std::exception &e) { report(error, capacity, e.what()); return nullptr; }
-}
-bool nr_denoiser_process(NRDenoiser *p, const float *input, float *output) {
-    if (!p || !input || !output) return false;
-    try { return p->process(input, output); } catch (...) { return false; }
-}
-void nr_denoiser_destroy(NRDenoiser *p) { delete p; }
-int nr_denoiser_delay_samples(NRDenoiser *p) { return p ? p->delaySamples() : 0; }
-NRProcessor *nr_processor_create(int engine, const char *libraries, const char *models, char *error, int capacity) {
-    try { return new NRProcessor(engine, libraries, models); }
-    catch (const std::exception &e) { report(error, capacity, e.what()); return nullptr; }
-}
-bool nr_processor_process(NRProcessor *p, const float *input, float *output, bool levelingEnabled, bool bypass) {
-    if (!p || !input || !output) return false;
-    try { return p->process(input, output, levelingEnabled, bypass); } catch (...) { return false; }
-}
-float nr_processor_gain_db(NRProcessor *p) { return p ? p->gainDB : 0; }
-void nr_processor_destroy(NRProcessor *p) { delete p; }
-void nr_processor_set_strength(NRProcessor *p, float value) {
-    if (p) p->strength = std::isfinite(value) ? std::clamp(value, 0.f, 1.f) : 1.f;
-}
 NRPipeline *nr_pipeline_create(int engine, const char *libraries, const char *models, char *error, int capacity) {
     try { return new NRPipeline(engine, libraries, models); }
     catch (const std::exception &e) { report(error, capacity, e.what()); return nullptr; }

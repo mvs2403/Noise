@@ -1,5 +1,12 @@
 #pragma once
+#ifdef __APPLE__
 #include <CoreAudio/CoreAudio.h>
+#endif
+#ifdef _WIN32
+#define NR_API __declspec(dllexport)
+#else
+#define NR_API
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #ifdef __cplusplus
@@ -23,29 +30,30 @@ typedef struct {
     float voice_gain_db;
 } NRStats;
 
-NRDenoiser *nr_denoiser_create(int engine, const char *libraries, const char *models,
+NR_API NRDenoiser *nr_denoiser_create(int engine, const char *libraries, const char *models,
                              char *error, int error_capacity);
-bool nr_denoiser_process(NRDenoiser *, const float input[480], float output[480]);
-void nr_denoiser_destroy(NRDenoiser *);
-int nr_denoiser_delay_samples(NRDenoiser *);
+NR_API bool nr_denoiser_process(NRDenoiser *, const float input[480], float output[480]);
+NR_API void nr_denoiser_destroy(NRDenoiser *);
+NR_API int nr_denoiser_delay_samples(NRDenoiser *);
 
 // Shared processing chain used by live routes and recording comparisons.
-NRProcessor *nr_processor_create(int engine, const char *libraries, const char *models,
+NR_API NRProcessor *nr_processor_create(int engine, const char *libraries, const char *models,
                                 char *error, int error_capacity);
-bool nr_processor_process(NRProcessor *, const float input[480], float output[480],
+NR_API bool nr_processor_process(NRProcessor *, const float input[480], float output[480],
                           bool leveling_enabled, bool bypass);
-float nr_processor_gain_db(NRProcessor *);
-void nr_processor_destroy(NRProcessor *);
+NR_API float nr_processor_gain_db(NRProcessor *);
+NR_API void nr_processor_destroy(NRProcessor *);
 // 0 = original signal, 1 = full suppression. The dry signal is delayed to match
 // each pinned model before mixing. Lower strength also retains more background voices.
-void nr_processor_set_strength(NRProcessor *, float strength);
+NR_API void nr_processor_set_strength(NRProcessor *, float strength);
 
 // Speech-aware gain control, followed by a frame-peak limiter. Mono 48 kHz.
-NRVoiceLeveler *nr_voice_leveler_create(void);
-void nr_voice_leveler_process(NRVoiceLeveler *, float samples[480], float speech_probability, bool enabled);
-float nr_voice_leveler_gain_db(NRVoiceLeveler *);
-void nr_voice_leveler_destroy(NRVoiceLeveler *);
+NR_API NRVoiceLeveler *nr_voice_leveler_create(void);
+NR_API void nr_voice_leveler_process(NRVoiceLeveler *, float samples[480], float speech_probability, bool enabled);
+NR_API float nr_voice_leveler_gain_db(NRVoiceLeveler *);
+NR_API void nr_voice_leveler_destroy(NRVoiceLeveler *);
 
+#ifdef __APPLE__
 NRPipeline *nr_pipeline_create(int engine, const char *libraries, const char *models,
                                char *error, int error_capacity);
 // Start output before capture, so a failed setup never leaves a selected app muted.
@@ -59,6 +67,8 @@ void nr_pipeline_set_strength(NRPipeline *, float);
 NRStats nr_pipeline_stats(NRPipeline *);
 // Stops capture/tap first (restoring the original app), output second, worker last.
 void nr_pipeline_destroy(NRPipeline *);
+
+#endif
 
 // Test-only entry point for the same bounded SPSC queue used by audio callbacks.
 bool nr_ring_self_test(void);

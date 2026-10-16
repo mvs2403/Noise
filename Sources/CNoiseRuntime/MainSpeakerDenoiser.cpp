@@ -3,17 +3,12 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
-#include <dlfcn.h>
+#include "DynamicLibrary.h"
+using noise::symbol;
 #include <stdexcept>
 #include <string>
 
 namespace {
-template<class T> T symbol(void *lib, const char *name) {
-    auto p = dlsym(lib, name);
-    if (!p) throw std::runtime_error(std::string("The main-speaker runtime is missing ") + name);
-    return reinterpret_cast<T>(p);
-}
-
 // A streaming Blackman-windowed low-pass, with a duplicated history to avoid
 // modulo arithmetic in the dot product. No per-frame allocation or sample drift.
 class LowPass {
@@ -56,8 +51,9 @@ struct MainSpeakerDenoiser::Impl {
 
     Impl(const char *libraries, const char *models) {
         try {
-            const auto libraryPath = std::string(libraries) + "/libweya_nc.dylib";
-            library = dlopen(libraryPath.c_str(), RTLD_NOW | RTLD_LOCAL);
+            const auto libraryPath = std::string(libraries) + "/" NR_LIBRARY("weya_nc");
+            try { library = noise::openLibrary(libraryPath); }
+            catch (...) { throw std::runtime_error("The automatic main-speaker runtime is missing or cannot load. Rebuild Noise to install it."); }
             if (!library) throw std::runtime_error("The automatic main-speaker runtime is missing. Rebuild Noise to install it.");
             auto load = symbol<void *(*)(const char *)>(library, "weya_nc_model_load_from_path");
             auto create = symbol<void *(*)(const void *, size_t, float)>(library, "weya_nc_session_create");
@@ -66,9 +62,7 @@ struct MainSpeakerDenoiser::Impl {
             freeSession = symbol<decltype(freeSession)>(library, "weya_nc_session_free");
             run = symbol<decltype(run)>(library, "weya_nc_process_frame");
             const auto path = std::string(models) + "/hush-main-speaker.tar.gz";
-            FILE *file = fopen(path.c_str(), "rb");
-            if (!file) throw std::runtime_error("The automatic main-speaker model is missing. Rebuild Noise to install it.");
-            fclose(file);
+            if (!std::filesystem::exists(std::filesystem::u8path(path))) throw std::runtime_error("The automatic main-speaker model is missing. Rebuild Noise to install it.");
             model = load(path.c_str());
             if (!model) throw std::runtime_error("The automatic main-speaker model could not load.");
             session = create(model, 16000, 100.f);
@@ -78,7 +72,7 @@ struct MainSpeakerDenoiser::Impl {
     void close() {
         if (session && freeSession) freeSession(session);
         if (model && freeModel) freeModel(model);
-        if (library) dlclose(library);
+        if (library) noise::closeLibrary(library);
         session = model = library = nullptr;
     }
     ~Impl() { close(); }

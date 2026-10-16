@@ -1,4 +1,6 @@
 .build/
+Desktop/bin/
+Desktop/obj/
 .cache/
 dist/
 Vendor/Sherpa/*

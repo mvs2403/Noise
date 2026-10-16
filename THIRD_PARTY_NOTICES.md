@@ -36,3 +36,21 @@ Upstream license texts are copied into the built application's `Resources/Licens
 The driver also contains its GPL license. Preserve these notices and the driver
 source/build instructions when distributing it. Development builds are locally
 signed; a public release requires distribution signing and notarization.
+
+## Windows desktop components
+
+The Windows build does not bundle BlackHole. Its native libraries and license
+texts are in `Runtime/` and `Licenses/` beside the executable. Installed Windows
+virtual devices are provided and licensed separately by their vendors.
+
+- Avalonia 12.1.4 and its Fluent theme: MIT, https://github.com/AvaloniaUI/Avalonia
+- NAudio.Wasapi 3.2.0: MIT, https://github.com/naudio/NAudio
+- .NET 10 self-contained runtime: MIT and third-party notices included by the
+  .NET SDK in each published package, https://github.com/dotnet/runtime
+- SkiaSharp / Skia and HarfBuzz native dependencies are distributed through
+  Avalonia's pinned NuGet dependency graph. The package lock records exact
+  versions; their upstream license notices accompany the desktop distribution.
+
+The same pinned DPDFNet, sherpa-onnx, ONNX Runtime, DeepFilterNet3, RNNoise, and
+Hush inputs above are used for desktop builds. Build scripts retain checksums,
+and release source archives include the shared DSP and reproducible build scripts.
