@@ -77,32 +77,29 @@ internal static class LinuxRoutingTest
             string unselectedOutput = SinkOf(appC);
             await audio.StartMicrophone(s);
             await Until(() => audio.MicrophoneMetrics is { Frames: >= 100, InputRms: > .01 }, audio, "microphone processing");
-            var read = new ProcessStartInfo("parec") { RedirectStandardOutput = true, RedirectStandardError = true };
-            foreach (string arg in new[] { "--raw", "--format=float32le", "--rate=48000", "--channels=1", "--device=" + audio.MicrophoneSource }) read.ArgumentList.Add(arg);
-            using (var recorder = Process.Start(read)!)
-            {
-                try
-                {
-                    byte[] samples = new byte[48000 * 4];
-                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                    await recorder.StandardOutput.BaseStream.ReadExactlyAsync(samples, timeout.Token);
-                    float[] floats = new float[48000]; Buffer.BlockCopy(samples, 0, floats, 0, samples.Length);
-                    Check(Math.Sqrt(floats.Average(x => x*x)) > .005, "virtual microphone must deliver processed PCM to another client");
-                }
-                finally { recorder.Kill(true); recorder.WaitForExit(); }
-            }
+            Check(await ReadRms(audio.MicrophoneSource) > .005, "virtual microphone must deliver processed PCM to another client");
             Console.WriteLine("PASS cleaned virtual microphone is readable by another audio client");
             await audio.StopSpeaker();
             Console.WriteLine($"After stopping: A={SinkOf(appA)} B={SinkOf(appB)} default={PulseCommand.Pactl("get-default-sink")} expected={b}");
             await Until(() => SinkOf(appA) == b && SinkOf(appB) == b, audio, "apps returning to the current default after stopping");
             Check(SinkOf(appC) == unselectedOutput, "stopping must not change the unselected app's current output");
             Console.WriteLine("PASS stopping restores selected app routing");
-            await audio.StartSpeaker(s); audio.SimulateCrashForTest();
+            s.Speaker.Enabled = false;
+            await audio.StartSpeaker(s);
+            Check(await ReadRms(b + ".monitor") > .012, "restarted incoming route must remain audible after its temporary stop mute");
+            Console.WriteLine("PASS restarting incoming audio restores audible playback");
+            audio.SimulateCrashForTest();
             var recovery = new LinuxAudio(); recovery.Update();
             Check(recovery.PollError() == null, "recovery must succeed");
             await Until(() => SinkOf(appA) == b && SinkOf(appB) == b, recovery, "crash recovery restoring apps");
             await recovery.DisposeAsync();
             Console.WriteLine("PASS recovery journal restores routing and removes stale virtual devices");
+            var solo = new LinuxAudio();
+            await solo.StartSpeaker(s); solo.SimulateCrashForTest();
+            var soloRecovery = new LinuxAudio(); soloRecovery.Update();
+            await Until(() => SinkOf(appA) == b && SinkOf(appB) == b, soloRecovery, "incoming-only crash recovery");
+            await soloRecovery.DisposeAsync(); await solo.DisposeAsync();
+            Console.WriteLine("PASS incoming-only crash recovery restores applications");
         }
         finally
         {
@@ -112,6 +109,21 @@ internal static class LinuxRoutingTest
             if (PulseCommand.List("sinks").Any(e => PulseCommand.Text(e, "name") == originalDefault))
                 PulseCommand.Pactl("set-default-sink", originalDefault);
         }
+    }
+    private static async Task<double> ReadRms(string source)
+    {
+        var read = new ProcessStartInfo("parec") { RedirectStandardOutput = true, RedirectStandardError = true };
+        foreach (string arg in new[] { "--raw", "--format=float32le", "--rate=48000", "--channels=1", "--latency-msec=40", "--device=" + source }) read.ArgumentList.Add(arg);
+        using var recorder = Process.Start(read)!;
+        try
+        {
+            byte[] samples = new byte[48000 * 4];
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await recorder.StandardOutput.BaseStream.ReadExactlyAsync(samples, timeout.Token);
+            float[] floats = new float[48000]; Buffer.BlockCopy(samples, 0, floats, 0, samples.Length);
+            return Math.Sqrt(floats.Average(x => x*x));
+        }
+        finally { if (!recorder.HasExited) recorder.Kill(true); recorder.WaitForExit(); }
     }
     private sealed class Fixture : IDisposable
     {

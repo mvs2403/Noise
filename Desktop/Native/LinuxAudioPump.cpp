@@ -104,7 +104,7 @@ struct Pulse {
         auto common = pa_stream_flags_t(PA_STREAM_ADJUST_LATENCY | PA_STREAM_DONT_MOVE);
         if (pa_stream_connect_record(capture, source.c_str(), &buffer, pa_stream_flags_t(common | PA_STREAM_START_CORKED)) < 0 ||
             pa_stream_connect_playback(playback, sink.c_str(), &buffer,
-                pa_stream_flags_t(common | PA_STREAM_START_CORKED), nullptr, nullptr) < 0) failed.store(true);
+                pa_stream_flags_t(common | PA_STREAM_START_CORKED | PA_STREAM_START_UNMUTED), nullptr, nullptr) < 0) failed.store(true);
         while (!failed.load() && (pa_stream_get_state(capture) != PA_STREAM_READY || pa_stream_get_state(playback) != PA_STREAM_READY))
             pa_threaded_mainloop_wait(loop);
         if (!failed.load()) {
