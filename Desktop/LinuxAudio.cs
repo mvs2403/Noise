@@ -229,12 +229,13 @@ internal sealed class LinuxAudio : IAudioBackend
         lock (gate)
         {
             Recover(); StopMicrophoneCore(); settings = s;
+            _ = DefaultOutput();
             if (!Inputs().Any(d => d.Id == s.MicrophoneDevice)) throw new InvalidOperationException("Choose an active physical microphone in Settings first.");
             EnsureMicrophone(); microphone = LinuxRoute.Start(s.Microphone, s.MicrophoneDevice, journal.MicSink, token + "_microphone");
         }
         return Task.CompletedTask;
     }
-    private void StopSpeakerCore() { var old = speaker; speaker = null; old?.Dispose(); Restore(); }
+    private void StopSpeakerCore() { var old = speaker; speaker = null; try { old?.Dispose(); } finally { Restore(); } }
     private void StopMicrophoneCore() { var old = microphone; microphone = null; old?.Dispose(); } // Keep a silent virtual microphone until Quit.
     public Task StopSpeaker() => Task.Run(() => { lock (gate) { if (recovered) StopSpeakerCore(); } });
     public Task StopMicrophone() => Task.Run(() => { lock (gate) StopMicrophoneCore(); });
@@ -316,7 +317,7 @@ internal sealed class LinuxRoute : IDisposable
     {
         stopping = true;
         try { if (!process.HasExited) { process.StandardInput.WriteLine("quit"); process.StandardInput.Close(); if (!process.WaitForExit(1500)) { process.Kill(true); process.WaitForExit(); } } }
-        catch (IOException) { if (!process.HasExited) process.Kill(true); }
+        catch (Exception e) when (e is IOException or InvalidOperationException) { if (!process.HasExited) process.Kill(true); }
         finally { process.Dispose(); }
     }
 }
