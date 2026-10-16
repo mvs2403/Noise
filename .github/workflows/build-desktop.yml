@@ -12,11 +12,31 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/cache/restore@v4
+        id: native-cache
+        with:
+          path: |
+            .cache/desktop-rust-win
+            .cache/desktop-sources
+            .cache/desktop-sherpa-win
+            ~/.cargo/registry
+          key: windows-native-v1-${{ hashFiles('script/bootstrap_desktop.py', 'Vendor/DeepFilterNet.Cargo.lock') }}
+          restore-keys: windows-native-v1-
       - name: Build and verify Windows packages
         shell: pwsh
         run: ./script/build_desktop.ps1
+      - uses: actions/cache/save@v4
+        if: always() && steps.native-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            .cache/desktop-rust-win
+            .cache/desktop-sources
+            .cache/desktop-sherpa-win
+            ~/.cargo/registry
+          key: windows-native-v1-${{ hashFiles('script/bootstrap_desktop.py', 'Vendor/DeepFilterNet.Cargo.lock') }}
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: windows-packages
           path: dist/desktop/*
-          if-no-files-found: error
+          if-no-files-found: ignore
