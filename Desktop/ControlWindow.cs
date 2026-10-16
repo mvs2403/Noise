@@ -93,13 +93,16 @@ internal sealed class ControlWindow : Window
                 status.Text = enabled ? "Filtering active" : "Original audio · voice leveling off";
             }
             catch (Exception e) { channel.Enabled = false; updating = true; toggle.IsChecked = false; updating = false; status.Text = e.Message; }
-            finally { toggle.IsEnabled = true; strengthBox.IsVisible = channel.Enabled; leveling.IsEnabled = channel.Enabled; backend.SettingsChanged(); }
+            finally {
+                toggle.IsEnabled = true; strengthBox.IsVisible = channel.Enabled; leveling.IsEnabled = channel.Enabled;
+                try { await Task.Run(backend.SettingsChanged); } catch (Exception e) { status.Text = e.Message; }
+            }
         };
         panel.Children.Add(toggle); panel.Children.Add(strengthBox); panel.Children.Add(leveling);
         panel.Children.Add(new TextBlock { Text = "Quiet voices up. Loud voices down.", FontSize = 12, Foreground = Brushes.Gray });
         return panel;
     }
-    private void Save() { try { settings.Save(); backend.SettingsChanged(); } catch (Exception e) { status.Text = "Could not save settings: " + e.Message; } }
+    private async void Save() { try { settings.Save(); await Task.Run(backend.SettingsChanged); } catch (Exception e) { status.Text = "Could not save settings: " + e.Message; } }
     private void RefreshApps() => apps.Content = settings.Applications.Count == 0 ? "Choose applications…" : $"Choose applications  ·  {settings.Applications.Count} selected  ›";
     private async Task StopAll()
     {

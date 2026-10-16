@@ -90,8 +90,9 @@ internal static class LinuxRoutingTest
         {
             try { await audio.DisposeAsync(); } catch { }
             foreach (var fixture in fixtures) fixture.Dispose();
-            PulseCommand.Pactl("set-default-sink", originalDefault);
             foreach (string id in modules.AsEnumerable().Reverse()) try { PulseCommand.Pactl("unload-module", id); } catch { }
+            if (PulseCommand.List("sinks").Any(e => PulseCommand.Text(e, "name") == originalDefault))
+                PulseCommand.Pactl("set-default-sink", originalDefault);
         }
     }
     private sealed class Fixture : IDisposable

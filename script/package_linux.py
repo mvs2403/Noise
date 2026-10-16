@@ -26,7 +26,7 @@ Section: sound
 Priority: optional
 Architecture: amd64
 Maintainer: Marco van Staden
-Depends: libc6 (>= 2.39), libstdc++6 (>= 13), libpulse0, pulseaudio-utils, libx11-6, libice6, libsm6, libfontconfig1, libfreetype6, libicu74 | libicu76 | libicu78, libssl3t64 | libssl3, zlib1g
+Depends: libc6 (>= 2.39), libstdc++6 (>= 13), libpulse0, pulseaudio-utils, libx11-6, libice6, libsm6, libxkbcommon0, libxext6, libxrandr2, libxcursor1, libxi6, libxrender1, libgl1, libfontconfig1, libfreetype6, libicu74 | libicu76 | libicu78, libssl3t64 | libssl3, zlib1g
 Recommends: xdotool, libglib2.0-bin
 Description: Local noise cancellation for incoming applications and microphones
  DPDFNet, DeepFilterNet3, RNNoise and automatic main-speaker enhancement.

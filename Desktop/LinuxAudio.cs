@@ -236,8 +236,8 @@ internal sealed class LinuxAudio : IAudioBackend
     }
     private void StopSpeakerCore() { var old = speaker; speaker = null; old?.Dispose(); Restore(); }
     private void StopMicrophoneCore() { var old = microphone; microphone = null; old?.Dispose(); } // Keep a silent virtual microphone until Quit.
-    public Task StopSpeaker() { lock (gate) { if (recovered) StopSpeakerCore(); } return Task.CompletedTask; }
-    public Task StopMicrophone() { lock (gate) StopMicrophoneCore(); return Task.CompletedTask; }
+    public Task StopSpeaker() => Task.Run(() => { lock (gate) { if (recovered) StopSpeakerCore(); } });
+    public Task StopMicrophone() => Task.Run(() => { lock (gate) StopMicrophoneCore(); });
     public void SettingsChanged() { lock (gate) { if (settings != null) { speaker?.Configure(settings.Speaker); microphone?.Configure(settings.Microphone); } } }
     public void Update()
     {
@@ -264,10 +264,9 @@ internal sealed class LinuxAudio : IAudioBackend
         }
     }
     public string? PollError() { lock (gate) { var message = error ?? speaker?.Error ?? microphone?.Error; error = null; return message; } }
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        lock (gate) { StopMicrophoneCore(); if (recovered) { StopSpeakerCore(); RemoveModules(); journal = new(); } }
-        return ValueTask.CompletedTask;
+        await Task.Run(() => { lock (gate) { StopMicrophoneCore(); if (recovered) { StopSpeakerCore(); RemoveModules(); journal = new(); } } });
     }
     internal void SimulateCrashForTest() { lock (gate) { speaker?.Dispose(); microphone?.Dispose(); speaker = microphone = null; } }
 }
