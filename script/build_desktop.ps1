@@ -28,5 +28,9 @@ if (!(Get-Command makensis -ErrorAction SilentlyContinue)) {
 }
 makensis /DVERSION=$version /DSTAGE=$stage /DOUTPUT="$dist\Noise-$version-windows-x64-setup.exe" script/windows-installer.nsi
 if ($LASTEXITCODE) { throw 'Installer build failed' }
+git archive --format=tar.gz --prefix="Noise-$version/" -o (Join-Path $dist "Noise-$version-source.tar.gz") HEAD
+if ($LASTEXITCODE) { throw 'Source archive failed' }
+python script/desktop_manifest.py --platform windows-x64 --stage $stage --output $dist
+if ($LASTEXITCODE) { throw 'Release manifest failed' }
 # Inspect the unsigned installer without installing drivers or changing audio defaults.
 Get-ChildItem $dist -File | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content (Join-Path $dist 'SHA256SUMS.txt')
