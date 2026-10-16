@@ -14,6 +14,9 @@ from pathlib import Path
 stage = Path(sys.argv[1])
 for p in [stage/'Noise', stage/'Runtime/noise-audio', *sorted(stage.glob('*.so*')), *sorted((stage/'Runtime').glob('*.so*'))]:
     if p.is_symlink(): continue
+    # .NET's optional LTTng provider is loaded only for external perf tracing.
+    # Noise never enables that provider; LTTng is not an application dependency.
+    if p.name == 'libcoreclrtraceptprovider.so': continue
     linked = subprocess.run(['ldd', str(p)], capture_output=True, text=True, check=True).stdout
     if 'not found' in linked: raise SystemExit(f'Unresolved native dependency in {p.name}:\n{linked}')
 print('PASS packaged native dependencies resolve')
