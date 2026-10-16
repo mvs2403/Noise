@@ -26,7 +26,7 @@ internal sealed class WindowsAudio : IAudioBackend
     }
     public IReadOnlyList<AudioDevice> Outputs() => Devices(DataFlow.Render);
     public IReadOnlyList<AudioDevice> Inputs() => Devices(DataFlow.Capture);
-    private static string? Executable(int pid)
+    internal static string? ProcessIdentity(int pid)
     {
         // Packaged apps (including new Teams) change install paths on update.
         // Their package-family identity stays stable and needs only query access.
@@ -50,7 +50,7 @@ internal sealed class WindowsAudio : IAudioBackend
     private static AudioApplication? Application(int pid)
     {
         if (pid == Environment.ProcessId || pid == 0) return null;
-        var path = Executable(pid);
+        var path = ProcessIdentity(pid);
         return path == null ? null : new(path, path.StartsWith("package:") ? path[8..].Split('_')[0] : Path.GetFileNameWithoutExtension(path));
     }
     private record Session(int Pid, string Path, string Device, int Root = 0);
@@ -136,7 +136,7 @@ internal sealed class WindowsAudio : IAudioBackend
         var parents = Parents(); var paths = new Dictionary<int, string?>();
         string? PathFor(int pid)
         {
-            if (!paths.TryGetValue(pid, out var path)) paths[pid] = path = Executable(pid);
+            if (!paths.TryGetValue(pid, out var path)) paths[pid] = path = ProcessIdentity(pid);
             return path;
         }
         var sessions = Sessions().Select(x => x with {
@@ -212,7 +212,7 @@ internal sealed class WindowsAudio : IAudioBackend
     private static extern bool Process32Next(nint snapshot, ref ProcessEntry entry);
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(nint handle);
     [DllImport("kernel32.dll")] private static extern nint OpenProcess(uint access, bool inherit, int pid);
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
     private static extern int GetPackageFamilyName(nint process, ref uint length, System.Text.StringBuilder? name);
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct ProcessEntry
