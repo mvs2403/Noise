@@ -6,6 +6,11 @@ internal static class SelfTest
     {
         try
         {
+            var parents = new Dictionary<int, int> { [30] = 20, [20] = 10, [10] = 1, [40] = 1 };
+            var paths = new Dictionary<int, string> { [1] = "shell", [10] = "Teams", [20] = "WebView", [30] = "audio-helper", [40] = "other-app" };
+            var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Teams", "WebView" };
+            Check(ApplicationTree.SelectedRoot(30, parents, pid => paths.GetValueOrDefault(pid), selected) == 10, "differently named helper belongs to selected parent exactly once");
+            Check(ApplicationTree.SelectedRoot(40, parents, pid => paths.GetValueOrDefault(pid), selected) == 0, "unselected app excluded");
             var ring = new SampleRing();
             float[] a = Enumerable.Range(0, 480).Select(i => (float)i).ToArray(), b = new float[480];
             for (int n = 0; n < 200; ++n)

@@ -37,7 +37,7 @@ internal sealed class WindowsAudio : IAudioBackend
         var path = Executable(pid);
         return path == null ? null : new(path, Path.GetFileNameWithoutExtension(path));
     }
-    private record Session(int Pid, string Path, string Device);
+    private record Session(int Pid, string Path, string Device, int Root = 0);
     private static List<Session> Sessions()
     {
         List<Session> result = [];
@@ -87,13 +87,6 @@ internal sealed class WindowsAudio : IAudioBackend
         }
         return null;
     }
-    private static int Root(int pid, string path, Dictionary<int, int> parents)
-    {
-        var seen = new HashSet<int>();
-        while (seen.Add(pid) && parents.TryGetValue(pid, out var parent) &&
-               string.Equals(Executable(parent), path, StringComparison.OrdinalIgnoreCase)) pid = parent;
-        return pid;
-    }
     private static Dictionary<int, int> Parents()
     {
         var result = new Dictionary<int, int>();
@@ -124,7 +117,15 @@ internal sealed class WindowsAudio : IAudioBackend
     private static List<Session> SelectedSessions(Settings s)
     {
         var selected = new HashSet<string>(s.Applications, StringComparer.OrdinalIgnoreCase);
-        var sessions = Sessions().Where(x => selected.Contains(x.Path)).ToList();
+        var parents = Parents(); var paths = new Dictionary<int, string?>();
+        string? PathFor(int pid)
+        {
+            if (!paths.TryGetValue(pid, out var path)) paths[pid] = path = Executable(pid);
+            return path;
+        }
+        var sessions = Sessions().Select(x => x with {
+            Root = ApplicationTree.SelectedRoot(x.Pid, parents, PathFor, selected)
+        }).Where(x => x.Root != 0).ToList();
         if (sessions.Any(x => x.Device != s.IncomingDevice))
             throw new InvalidOperationException("Route every selected app to the Incoming cable in Windows Volume mixer first. This prevents hearing original and cleaned audio together.");
         return sessions;
@@ -142,8 +143,7 @@ internal sealed class WindowsAudio : IAudioBackend
         var sessions = SelectedSessions(s);
         if (s.Applications.Count == 0 || sessions.Count == 0)
             throw new InvalidOperationException("Select an app, start audio in it, and route it to the Incoming cable in Windows Volume mixer. Then turn filtering on.");
-        var parents = Parents();
-        var pids = sessions.Select(x => Root(x.Pid, x.Path, parents)).Distinct().ToArray();
+        var pids = sessions.Select(x => x.Root).Distinct().ToArray();
         capturedRoots = pids.ToHashSet();
         speaker = await WindowsRoute.Create(s.Speaker, pids, null, null);
     }
@@ -175,8 +175,8 @@ internal sealed class WindowsAudio : IAudioBackend
             if (speaker != null && settings != null)
             {
                 ValidateEndpoints(settings, DefaultOutput());
-                var sessions = SelectedSessions(settings); var parents = Parents();
-                if (sessions.Any(s => !capturedRoots.Contains(Root(s.Pid, s.Path, parents))))
+                var sessions = SelectedSessions(settings);
+                if (sessions.Any(s => !capturedRoots.Contains(s.Root)))
                     return "A selected application started a new audio process. Reopen Choose applications and Apply, then restart filtering.";
                 if (speaker.Error != null) return speaker.Error;
             }
