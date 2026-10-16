@@ -1,0 +1,29 @@
+name: Build release (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Fetch pinned engines and models
+        run: python3 script/bootstrap.py
+      - name: Test audio processing and routing policy
+        run: swift test
+      - name: Package and validate the private beta
+        run: python3 script/package_release.py
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: Noise-apple-silicon-private-beta
+          path: dist/releases/*/*
+          if-no-files-found: error
+          retention-days: 14
