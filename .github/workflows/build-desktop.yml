@@ -87,3 +87,26 @@ jobs:
           name: linux-packages
           path: dist/desktop/*
           if-no-files-found: ignore
+  pipewire:
+    if: inputs.platform != 'windows'
+    needs: linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install PipeWire compatibility dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pipewire-pulse wireplumber pulseaudio-utils dbus-x11
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: .cache/linux-artifacts
+      - name: Verify packaged app with PipeWire-Pulse
+        run: |
+          mkdir -p .cache/pipewire-package
+          tar -xzf .cache/linux-artifacts/Noise-*-linux-x64.tar.gz -C .cache/pipewire-package --strip-components=1
+          dbus-run-session -- ./script/test_linux_audio.sh "$PWD/.cache/pipewire-package" pipewire
