@@ -6,12 +6,16 @@ on:
         description: Desktop packages to build
         type: choice
         default: linux
-        options: [windows, linux, both]
+        options: [windows, linux, both, routing]
+      package_run:
+        description: Existing Linux package run for fast routing verification
+        type: string
+        default: '38966809384'
 permissions:
   contents: read
 jobs:
   windows:
-    if: inputs.platform != 'linux'
+    if: inputs.platform == 'windows' || inputs.platform == 'both'
     runs-on: windows-2025
     timeout-minutes: 45
     steps:
@@ -48,7 +52,7 @@ jobs:
           path: dist/desktop/*
           if-no-files-found: ignore
   linux:
-    if: inputs.platform != 'windows'
+    if: inputs.platform == 'linux' || inputs.platform == 'both'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -88,7 +92,7 @@ jobs:
           path: dist/desktop/*
           if-no-files-found: ignore
   pipewire:
-    if: inputs.platform != 'windows'
+    if: inputs.platform == 'linux' || inputs.platform == 'both'
     needs: linux
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -110,3 +114,32 @@ jobs:
           mkdir -p .cache/pipewire-package
           tar -xzf .cache/linux-artifacts/Noise-*-linux-x64.tar.gz -C .cache/pipewire-package --strip-components=1
           dbus-run-session -- ./script/test_linux_audio.sh "$PWD/.cache/pipewire-package" pipewire
+  routing:
+    if: inputs.platform == 'routing'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install PipeWire compatibility dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pipewire-pulse wireplumber pulseaudio-utils dbus-x11
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: .cache/linux-artifacts
+          run-id: ${{ inputs.package_run }}
+          github-token: ${{ github.token }}
+      - name: Verify current routing code with existing native engines
+        run: |
+          mkdir -p .cache/routing-package
+          tar -xzf .cache/linux-artifacts/Noise-*-linux-x64.tar.gz -C .cache/routing-package --strip-components=1
+          dotnet restore Desktop/Noise.Desktop.csproj --locked-mode
+          dotnet publish Desktop/Noise.Desktop.csproj -c Release -r linux-x64 --self-contained true -o "$PWD/.cache/routing-package"
+          dbus-run-session -- ./script/test_linux_audio.sh "$PWD/.cache/routing-package" pipewire
