@@ -189,11 +189,30 @@ internal sealed class LinuxAudio : IAudioBackend
                 journal.OriginalSinks[index] = sink; SaveJournal();
                 if (sink == lastOutput) journal.FollowDefault.Add(index); else journal.FollowDefault.Remove(index);
                 SaveJournal();
-                PulseCommand.Pactl("move-sink-input", index, journal.Incoming);
+                MoveInput(index, journal.Incoming);
             }
             else if (!Owned(stream) && sink == journal.Incoming && journal.OriginalSinks.TryGetValue(index, out var original))
-            { PulseCommand.Pactl("move-sink-input", index, journal.FollowDefault.Contains(index) ? DefaultOutput() : sinks.Values.Contains(original) ? original : DefaultOutput()); journal.OriginalSinks.Remove(index); journal.FollowDefault.Remove(index); SaveJournal(); }
+            { MoveInput(index, journal.FollowDefault.Contains(index) ? DefaultOutput() : sinks.Values.Contains(original) ? original : DefaultOutput()); journal.OriginalSinks.Remove(index); journal.FollowDefault.Remove(index); SaveJournal(); }
         }
+    }
+    private static void MoveInput(string index, string destination)
+    {
+        // PipeWire acknowledges metadata updates before its session manager has
+        // moved the stream. Serialize moves through observed graph state, and
+        // retain the journal if a move cannot be completed.
+        int stable = 0;
+        for (int attempt = 0; attempt < 30; ++attempt)
+        {
+            if (attempt % 5 == 0) PulseCommand.Pactl("move-sink-input", index, destination);
+            var stream = PulseCommand.List("sink-inputs").FirstOrDefault(e => PulseCommand.Text(e, "index") == index);
+            if (stream.ValueKind == JsonValueKind.Undefined) return; // Application closed.
+            var sinkIndex = PulseCommand.Text(stream, "sink");
+            bool arrived = PulseCommand.List("sinks").Any(e => PulseCommand.Text(e, "index") == sinkIndex && PulseCommand.Text(e, "name") == destination);
+            stable = arrived ? stable + 1 : 0;
+            if (stable >= 2) return;
+            Thread.Sleep(50);
+        }
+        throw new InvalidOperationException("The audio server could not move an application's output. Restart this route to retry.");
     }
     private void Restore()
     {
@@ -206,7 +225,7 @@ internal sealed class LinuxAudio : IAudioBackend
             var original = journal.OriginalSinks.GetValueOrDefault(id, "");
             var destination = journal.FollowDefault.Contains(id) ? DefaultOutput() : sinks.Values.Contains(original) ? original : DefaultOutput();
             if (Environment.GetEnvironmentVariable("NOISE_TEST_AUDIO") == "1") Console.WriteLine($"RESTORE stream={id} original={original} follow={journal.FollowDefault.Contains(id)} target={destination}");
-            PulseCommand.Pactl("move-sink-input", id, destination);
+            MoveInput(id, destination);
         }
         journal.OriginalSinks.Clear(); journal.FollowDefault.Clear(); SaveJournal();
     }

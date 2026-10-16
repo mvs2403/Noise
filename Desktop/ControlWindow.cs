@@ -109,7 +109,8 @@ internal sealed class ControlWindow : Window
         settings.Speaker.Enabled = settings.Microphone.Enabled = false;
         // Use switch events so the dependent slider and leveling controls update too.
         foreach (var toggle in toggles) toggle.IsChecked = false;
-        await backend.StopSpeaker(); await backend.StopMicrophone();
+        try { await backend.StopSpeaker(); }
+        finally { await backend.StopMicrophone(); }
         status.Text = backend.AutomaticAppRouting ? "Stopped. Application outputs restored; virtual microphone is silent." : "Stopped. Restore app outputs to Default in Windows Volume mixer before quitting.";
     }
     private Window Dialog(string title, StackPanel panel, double width = 520)
