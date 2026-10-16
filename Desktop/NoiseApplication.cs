@@ -31,9 +31,11 @@ public sealed class NoiseApplication : Application
         {
             desktop = lifetime; desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             bool smoke = Program.Arguments.Contains("--smoke-ui");
-            backend = smoke ? new PreviewAudio() : OperatingSystem.IsWindows() ? new WindowsAudio() :
+            backend = smoke ? new PreviewAudio() : OperatingSystem.IsWindows() ? new WindowsAudio() : OperatingSystem.IsLinux() ? new LinuxAudio() :
                 throw new PlatformNotSupportedException("This release supports Windows 11 x64. Use the native Noise app on macOS.");
             control = new ControlWindow(backend, Quit, smoke);
+            bool trayAvailable = backend.HasTrayHost;
+            control.ShowInTaskbar = !trayAvailable;
             desktop.MainWindow = control;
             using var icon = Assembly.GetExecutingAssembly().GetManifestResourceStream("Noise.noise-icon.png")!;
             var menu = new NativeMenu();
@@ -42,7 +44,10 @@ public sealed class NoiseApplication : Application
             var tray = new TrayIcon { Icon = new WindowIcon(icon), ToolTipText = "Noise · audio controls", Menu = menu,
                 Command = new ActionCommand(Show), IsVisible = true };
             TrayIcon.SetIcons(this, new TrayIcons { tray });
-            control.Closing += (_, e) => { if (!quitting) { e.Cancel = true; control.Hide(); } };
+            control.Closing += (_, e) => { if (!quitting) { e.Cancel = true; if (trayAvailable) control.Hide(); else control.WindowState = WindowState.Minimized; } };
+            if (OperatingSystem.IsLinux())
+                foreach (var signal in new[] { System.Runtime.InteropServices.PosixSignal.SIGTERM, System.Runtime.InteropServices.PosixSignal.SIGINT })
+                    SignalHandlers.Add(System.Runtime.InteropServices.PosixSignalRegistration.Create(signal, context => { context.Cancel = true; Dispatcher.UIThread.Post(async () => await Quit()); }));
             control.Show();
             if (smoke) DispatcherTimer.RunOnce(() =>
             {
@@ -54,6 +59,7 @@ public sealed class NoiseApplication : Application
         base.OnFrameworkInitializationCompleted();
     }
     private void Show() { control?.Show(); control?.Activate(); }
+    private static readonly List<IDisposable> SignalHandlers = [];
     private async Task Quit()
     {
         if (quitting) return;

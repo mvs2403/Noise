@@ -18,6 +18,7 @@ from private_windows_runtime import isolate_onnx_runtime
 
 RN_REV = "70f1d256acd4b34a572f999a05c87bf00b67730d"
 SHERPA_WIN = "sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts-lib"
+SHERPA_LINUX = "sherpa-onnx-v1.13.8-linux-x64-shared-lib"
 
 
 def run(*args, cwd=ROOT, env=None):
@@ -127,7 +128,9 @@ def collect_rust_notices(destination, lockfiles):
 def main():
     parser = argparse.ArgumentParser(); parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(); output = args.output.resolve(); output.mkdir(parents=True, exist_ok=True)
-    if sys.platform != "win32": raise RuntimeError("Use a native Windows x64 build host for this release")
+    if sys.platform == "linux":
+        build_linux(output); return
+    if sys.platform != "win32": raise RuntimeError("Build on Windows x64 or Linux x64")
     if os.environ.get("PROCESSOR_ARCHITECTURE", "").lower() != "amd64": raise RuntimeError("Windows x64 is required")
     CACHE.mkdir(exist_ok=True)
     runtime = output / "Runtime"; runtime.mkdir(exist_ok=True)
@@ -149,6 +152,36 @@ def main():
     shutil.copy2(Path(env["CARGO_TARGET_DIR"]) / "x86_64-pc-windows-msvc/release/df.dll", runtime / "df.dll")
     run("cargo", "+1.90.0", "build", "--release", "--locked", "--target", "x86_64-pc-windows-msvc", cwd=hush, env=env)
     shutil.copy2(Path(env["CARGO_TARGET_DIR"]) / "x86_64-pc-windows-msvc/release/weya_nc.dll", runtime / "weya_nc.dll")
+    models_and_licenses(output, rn, df, hush)
+    collect_rust_notices(output / "Licenses", [df / "Cargo.lock", hush / "Cargo.lock"])
+
+
+def build_linux(output):
+    import platform
+    if platform.machine() != "x86_64": raise RuntimeError("This package targets Linux x64")
+    CACHE.mkdir(exist_ok=True)
+    runtime = output / "Runtime"; runtime.mkdir(exist_ok=True)
+    archive = fetch(f"https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/{SHERPA_LINUX}.tar.bz2", SHERPA_LINUX + ".tar.bz2", "3892d184be41027e18165e67f549cd4e4cdd8dcd73ac5579e97afd55e14e30b6")
+    sherpa = CACHE / "desktop-sherpa-linux"
+    if not sherpa.exists(): extract(archive, sherpa)
+    for library in sherpa.rglob("*.so*"):
+        dest = runtime / library.name
+        if dest.exists() or dest.is_symlink(): dest.unlink()
+        if library.is_symlink(): dest.symlink_to(os.readlink(library))
+        else: shutil.copy2(library, dest)
+    rn, df, hush = prepare_sources()
+    build = CACHE / "desktop-native-linux"
+    run("cmake", "-S", ROOT / "Desktop/Native", "-B", build, "-DCMAKE_BUILD_TYPE=Release", f"-DRNNOISE_SOURCE={rn}")
+    run("cmake", "--build", build, "--parallel", "2")
+    run("cmake", "--install", build, "--prefix", runtime)
+    run("rustup", "toolchain", "install", "1.90.0", "--profile", "minimal")
+    env = dict(os.environ, CARGO_TARGET_DIR=str(CACHE / "desktop-rust-linux"), CARGO_PROFILE_RELEASE_STRIP="none")
+    run("cargo", "+1.90.0", "build", "-p", "deep_filter", "--lib", "--release", "--locked", "--no-default-features", "--features", "capi", "--target", "x86_64-unknown-linux-gnu", cwd=df, env=env)
+    shutil.copy2(Path(env["CARGO_TARGET_DIR"]) / "x86_64-unknown-linux-gnu/release/libdf.so", runtime / "libdf.so")
+    run("cargo", "+1.90.0", "build", "--release", "--locked", "--target", "x86_64-unknown-linux-gnu", cwd=hush, env=env)
+    shutil.copy2(Path(env["CARGO_TARGET_DIR"]) / "x86_64-unknown-linux-gnu/release/libweya_nc.so", runtime / "libweya_nc.so")
+    for library in runtime.glob("*.so*"):
+        if not library.is_symlink(): run("patchelf", "--set-rpath", "$ORIGIN", library)
     models_and_licenses(output, rn, df, hush)
     collect_rust_notices(output / "Licenses", [df / "Cargo.lock", hush / "Cargo.lock"])
 

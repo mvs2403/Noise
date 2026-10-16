@@ -22,8 +22,8 @@ internal sealed class ControlWindow : Window
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         var tabs = new TabControl { ItemsSource = new[] {
-            new TabItem { Header = "🔊  Speaker", Content = Channel(settings.Speaker, false) },
-            new TabItem { Header = "🎙  Microphone", Content = Channel(settings.Microphone, true) }
+            new TabItem { Header = "🔊  Speaker", FontSize = 14, Padding = new Thickness(10, 8), Content = Channel(settings.Speaker, false) },
+            new TabItem { Header = "🎙  Microphone", FontSize = 14, Padding = new Thickness(10, 8), Content = Channel(settings.Microphone, true) }
         }};
         var controls = Column(16);
         var heading = new DockPanel();
@@ -37,7 +37,7 @@ internal sealed class ControlWindow : Window
         footer.Children.Add(Button("Quit", quit)); controls.Children.Add(footer);
         controls.Children.Add(new TextBlock { Text = "Audio stays on this device", FontSize = 11, Foreground = Brushes.Gray });
         Content = new Border { Padding = new Thickness(20), Child = controls };
-        RefreshApps(); status.Text = "Ready. Configure audio routing in Settings before your first call.";
+        RefreshApps(); status.Text = backend.AutomaticAppRouting ? "Ready. Select apps to filter. Set up your microphone in Settings." : "Ready. Configure audio routing in Settings before your first call.";
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         timer.Tick += async (_, _) =>
         {
@@ -93,13 +93,13 @@ internal sealed class ControlWindow : Window
                 status.Text = enabled ? "Filtering active" : "Original audio · voice leveling off";
             }
             catch (Exception e) { channel.Enabled = false; updating = true; toggle.IsChecked = false; updating = false; status.Text = e.Message; }
-            finally { toggle.IsEnabled = true; strengthBox.IsVisible = channel.Enabled; leveling.IsEnabled = channel.Enabled; }
+            finally { toggle.IsEnabled = true; strengthBox.IsVisible = channel.Enabled; leveling.IsEnabled = channel.Enabled; backend.SettingsChanged(); }
         };
         panel.Children.Add(toggle); panel.Children.Add(strengthBox); panel.Children.Add(leveling);
         panel.Children.Add(new TextBlock { Text = "Quiet voices up. Loud voices down.", FontSize = 12, Foreground = Brushes.Gray });
         return panel;
     }
-    private void Save() { try { settings.Save(); } catch (Exception e) { status.Text = "Could not save settings: " + e.Message; } }
+    private void Save() { try { settings.Save(); backend.SettingsChanged(); } catch (Exception e) { status.Text = "Could not save settings: " + e.Message; } }
     private void RefreshApps() => apps.Content = settings.Applications.Count == 0 ? "Choose applications…" : $"Choose applications  ·  {settings.Applications.Count} selected  ›";
     private async Task StopAll()
     {
@@ -107,7 +107,7 @@ internal sealed class ControlWindow : Window
         // Use switch events so the dependent slider and leveling controls update too.
         foreach (var toggle in toggles) toggle.IsChecked = false;
         await backend.StopSpeaker(); await backend.StopMicrophone();
-        status.Text = "Stopped. Restore app outputs to Default in Windows Volume mixer before quitting.";
+        status.Text = backend.AutomaticAppRouting ? "Stopped. Application outputs restored; virtual microphone is silent." : "Stopped. Restore app outputs to Default in Windows Volume mixer before quitting.";
     }
     private Window Dialog(string title, StackPanel panel, double width = 520)
     {
@@ -137,14 +137,17 @@ internal sealed class ControlWindow : Window
             }
         }
         panel.Children.Add(Label("Filter one or more apps with one shared engine."));
-        panel.Children.Add(Button("Use current app", () => { if (backend.CurrentApplication() is {} app) Add(app); else message.Text = "Switch to the app once, then reopen this picker."; return Task.CompletedTask; }));
-        panel.Children.Add(Button("Click a window to select it", async () =>
+        var current = Button("Use current app", () => { if (backend.CurrentApplication() is {} app) Add(app); else message.Text = "Switch to the app once, then reopen this picker."; return Task.CompletedTask; });
+        current.IsEnabled = backend.CanPickWindow; panel.Children.Add(current);
+        var pickWindow = Button("Click a window to select it", async () =>
         {
             pick?.Cancel(); pick = new CancellationTokenSource(); window.Hide(); Hide();
             try { var app = await backend.PickWindow(pick.Token); if (app != null) Add(app); else message.Text = "No application selected. Try again."; }
             catch (OperationCanceledException) { }
             finally { Show(); Activate(); window.Show(); window.Activate(); }
-        }));
+        });
+        pickWindow.IsEnabled = backend.CanPickWindow; panel.Children.Add(pickWindow);
+        if (!backend.CanPickWindow) panel.Children.Add(Label("Use the checkboxes on this desktop. Window picking needs an X11 session and xdotool."));
         panel.Children.Add(Button("Refresh applications", () => { Rebuild(); return Task.CompletedTask; }));
         panel.Children.Add(choices); panel.Children.Add(message);
         panel.Children.Add(Button("Apply", async () =>
@@ -169,8 +172,8 @@ internal sealed class ControlWindow : Window
             panel.Children.Add(engines); panel.Children.Add(voices);
         }
         panel.Children.Add(Label("Main speaker is automatic and uses the Hush model. No voice sample is required. It can attenuate the foreground voice in difficult audio."));
-        panel.Children.Add(new Separator()); panel.Children.Add(Label("Audio routing · follows Windows default listening output"));
-        var outputs = backend.Outputs(); var inputs = backend.Inputs();
+        panel.Children.Add(new Separator()); panel.Children.Add(Label("Audio routing · follows system listening output"));
+        var outputs = backend.AutomaticAppRouting ? Array.Empty<AudioDevice>() : backend.Outputs(); var inputs = backend.Inputs();
         ComboBox Device(string label, IReadOnlyList<AudioDevice> devices, string id)
         {
             panel.Children.Add(Label(label));
@@ -178,12 +181,12 @@ internal sealed class ControlWindow : Window
             var combo = new ComboBox { ItemsSource = options, SelectedIndex = Math.Max(0, Array.FindIndex(options, d => d.Id == id)), HorizontalAlignment = HorizontalAlignment.Stretch };
             panel.Children.Add(combo); return combo;
         }
-        var incoming = Device("Incoming isolation cable (playback endpoint)", outputs, settings.IncomingDevice);
+        var incoming = backend.AutomaticAppRouting ? null : Device("Incoming isolation cable (playback endpoint)", outputs, settings.IncomingDevice);
         var mic = Device("Physical microphone", inputs, settings.MicrophoneDevice);
-        var cleanedMic = Device("Cleaned microphone cable (different playback endpoint)", outputs, settings.CleanMicrophoneDevice);
+        var cleanedMic = backend.AutomaticAppRouting ? null : Device("Cleaned microphone cable (different playback endpoint)", outputs, settings.CleanMicrophoneDevice);
         panel.Children.Add(new TextBlock { Text = backend.SetupInstructions, TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = Brushes.LightGray });
-        panel.Children.Add(Button("Open Windows sound settings", () => { OpenUrl("ms-settings:apps-volume"); return Task.CompletedTask; }));
-        panel.Children.Add(Button("Virtual cable installation guide", () => { OpenUrl("https://github.com/mvs2403/Noise/blob/main/docs/WINDOWS.md"); return Task.CompletedTask; }));
+        if (!backend.AutomaticAppRouting) panel.Children.Add(Button("Open Windows sound settings", () => { OpenUrl("ms-settings:apps-volume"); return Task.CompletedTask; }));
+        panel.Children.Add(Button("Audio setup guide", () => { OpenUrl("https://github.com/mvs2403/Noise/blob/main/docs/" + (backend.AutomaticAppRouting ? "LINUX.md" : "WINDOWS.md")); return Task.CompletedTask; }));
         panel.Children.Add(Button("Apply settings", async () =>
         {
             foreach (var choice in processingChoices)
@@ -191,9 +194,9 @@ internal sealed class ControlWindow : Window
                 choice.Channel.Engine = Math.Max(0, choice.Engine.SelectedIndex);
                 choice.Channel.MainSpeaker = choice.Voices.SelectedIndex == 1;
             }
-            settings.IncomingDevice = (incoming.SelectedItem as AudioDevice)?.Id ?? "";
+            settings.IncomingDevice = (incoming?.SelectedItem as AudioDevice)?.Id ?? "";
             settings.MicrophoneDevice = (mic.SelectedItem as AudioDevice)?.Id ?? "";
-            settings.CleanMicrophoneDevice = (cleanedMic.SelectedItem as AudioDevice)?.Id ?? "";
+            settings.CleanMicrophoneDevice = (cleanedMic?.SelectedItem as AudioDevice)?.Id ?? "";
             Save(); bool speaker = backend.SpeakerRunning, microphone = backend.MicrophoneRunning;
             try
             {

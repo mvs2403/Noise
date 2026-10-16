@@ -60,3 +60,8 @@ On Windows, sherpa-onnx's DLL import name is changed from `onnxruntime.dll` to
 Windows' older inbox runtime. Inference code and model weights are unchanged.
 The patch is in `script/private_windows_runtime.py`; the distribution includes
 `Licenses/NATIVE-MODIFICATIONS.txt`.
+
+Linux uses the system libpulse client library (LGPL-2.1-or-later) and the installed
+PulseAudio/PipeWire-Pulse server. These system components are not bundled. The
+native helper links dynamically against libpulse; its source and build instructions
+are included. `pactl` and optional `xdotool` are installed system utilities.

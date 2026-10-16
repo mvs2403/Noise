@@ -48,6 +48,10 @@ public record AudioApplication(string Id, string Name) { public override string 
 
 public interface IAudioBackend : IAsyncDisposable
 {
+    bool AutomaticAppRouting => false;
+    bool CanPickWindow => true;
+    bool HasTrayHost => true;
+    void SettingsChanged() { }
     string SetupInstructions { get; }
     IReadOnlyList<AudioDevice> Outputs();
     IReadOnlyList<AudioDevice> Inputs();

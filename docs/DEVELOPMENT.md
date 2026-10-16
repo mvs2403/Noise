@@ -1,7 +1,8 @@
 # Development
 
 The native SwiftUI app remains in `Sources/Noise/`. The Windows tray app is in
-`Desktop/`, built with .NET 10 and Avalonia. Both use the same C++ denoiser,
+`Desktop/`, built with .NET 10 and Avalonia. Linux shares this UI and uses a native
+libpulse helper. All platforms use the same C++ denoiser,
 strength blend, main-speaker bridge, and voice leveler in `Sources/CNoiseRuntime/`.
 Only the macOS Core Audio pipeline remains Objective-C++.
 
@@ -9,6 +10,11 @@ For the Windows build, prerequisites and routing behavior, see [Windows](WINDOWS
 `script/build_desktop.ps1` creates the installer, portable ZIP, source archive,
 checksums, and an exact-commit manifest. No Windows build tools are required on
 an end user's computer.
+
+Linux uses `script/build_desktop_linux.sh`; see [Linux](LINUX.md). Callbacks use
+bounded queues, with inference outside the audio event thread. Capture/playback
+streams cannot silently move to another device; output changes reconnect the
+speaker helper explicitly. A local journal recovers app routes after a crash.
 
 ## Build and run
 

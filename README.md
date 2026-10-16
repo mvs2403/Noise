@@ -11,7 +11,7 @@ Noise cancellation for the apps you hear and the microphone others hear.</p>
   · <a href="#quick-start">Quick start</a>
   · <a href="docs/DEVELOPMENT.md">Developer guide</a>
 </p>
-<p align="center">macOS 14.2+ · Windows 11 x64 · Private beta</p>
+<p align="center">macOS 14.2+ · Windows 11 x64 · Linux x64 · Private beta</p>
 
 Noise processes call audio locally on your device. Clean the sound arriving from
 Teams, Zoom, a browser, or several apps together, and optionally send a cleaned
@@ -23,12 +23,16 @@ microphone to your call app. Each direction has independent controls.
 | --- | --- | --- |
 | macOS 14.2+, Apple Silicon | [DMG · 0.1.0](https://github.com/mvs2403/Noise/releases/download/v0.1.0/Noise-0.1.0-apple-silicon.dmg) | [Mac quick start](#quick-start) |
 | Windows 11, x64 | [Installer · 0.2.0](https://github.com/mvs2403/Noise/releases/download/v0.2.0/Noise-0.2.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/mvs2403/Noise/releases/download/v0.2.0/Noise-0.2.0-windows-x64.zip) | [Windows routing guide](docs/WINDOWS.md) |
+| Linux x64, glibc 2.39+ | [Debian package · 0.3.0](https://github.com/mvs2403/Noise/releases/download/v0.3.0/Noise-0.3.0-linux-x64.deb) · [Portable archive](https://github.com/mvs2403/Noise/releases/download/v0.3.0/Noise-0.3.0-linux-x64.tar.gz) | [Linux setup](docs/LINUX.md) |
 
 Windows uses installed virtual audio devices. Two independent cable pairs are
 needed for both directions together; drivers are installed separately. The
 installer includes the filters and .NET runtime and is unsigned. Download links
 require access to this private repository. The screenshots and Mac instructions
 below show the native macOS app; Windows has a matching two-tab tray panel.
+
+Linux routes selected apps automatically through PulseAudio/PipeWire-Pulse and
+provides a virtual microphone. Window picking requires X11; checkboxes work on Wayland.
 
 <p align="center"><img src="docs/images/desktop-controls.png" width="340" alt="Desktop controls with Speaker and Microphone tabs, app selection, noise cancellation and voice leveling"></p>
 

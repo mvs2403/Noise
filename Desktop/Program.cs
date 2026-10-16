@@ -12,6 +12,7 @@ internal static class Program
     {
         Arguments = args;
         if (args.Contains("--self-test")) return SelfTest.Run();
+        if (args.Contains("--routing-self-test")) return LinuxRoutingTest.Run();
         // A second background instance must not capture and play the same apps twice.
         string identity = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Settings.FilePath)))[..16];
         using var instance = new Mutex(false, "Noise.Desktop." + identity);
