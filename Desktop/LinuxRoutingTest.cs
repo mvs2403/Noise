@@ -10,7 +10,11 @@ internal static class LinuxRoutingTest
     {
         for (int i = 0; i < 150; ++i)
         {
-            audio.Update(); if (audio.PollError() is {} error) throw new Exception(error);
+            audio.Update(); if (audio.PollError() is {} error) {
+                foreach (var kind in new[] { "sinks", "sources", "sink-inputs", "source-outputs" })
+                    Console.Error.WriteLine(kind + ": " + PulseCommand.Pactl("--format=json", "list", kind));
+                throw new Exception(error);
+            }
             if (predicate()) return; await Task.Delay(100);
         }
         throw new Exception("Timed out: " + message);

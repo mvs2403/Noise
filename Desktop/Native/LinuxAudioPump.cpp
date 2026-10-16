@@ -120,6 +120,19 @@ struct Pulse {
         else failed.store(true);
         pa_threaded_mainloop_unlock(loop);
     }
+    void diagnostics() {
+        pa_threaded_mainloop_lock(loop);
+        for (auto s : {capture, playback}) {
+            auto b = pa_stream_get_buffer_attr(s);
+            std::cerr << (s == capture ? "Capture" : "Playback")
+                << " state=" << pa_stream_get_state(s) << " corked=" << pa_stream_is_corked(s)
+                << " suspended=" << pa_stream_is_suspended(s)
+                << " writable=" << pa_stream_writable_size(s);
+            if (b) std::cerr << " buffers=" << b->maxlength << "," << b->tlength << "," << b->prebuf << "," << b->minreq << "," << b->fragsize;
+            std::cerr << std::endl;
+        }
+        pa_threaded_mainloop_unlock(loop);
+    }
     ~Pulse() {
         if (loop) {
             pa_threaded_mainloop_lock(loop);
@@ -177,6 +190,7 @@ int main(int argc, char **argv) {
             if (audio.failed.load()) throw std::runtime_error("The audio server or selected device stopped. Restart this route.");
             if (audio.input.count() > 12000) {
                 std::cerr << "Capture queue: " << audio.input.count() << " samples; output queue: " << audio.output.count() << std::endl;
+                audio.diagnostics();
                 throw std::runtime_error("Audio processing fell behind. Choose a faster engine, such as RNNoise.");
             }
             if (audio.output.count() >= 1440 || audio.input.count() == 0) {
