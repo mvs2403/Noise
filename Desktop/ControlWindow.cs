@@ -127,7 +127,8 @@ internal sealed class ControlWindow : Window
         {
             choices.Children.Clear();
             var available = backend.Applications().ToDictionary(a => a.Id);
-            foreach (var id in selected) if (!available.ContainsKey(id)) available[id] = new(id, Path.GetFileNameWithoutExtension(id));
+            foreach (var id in selected) if (!available.ContainsKey(id))
+                available[id] = new(id, id.StartsWith("package:") ? id[8..].Split('_')[0] : Path.GetFileNameWithoutExtension(id));
             foreach (var app in available.Values.OrderBy(a => a.Name))
             {
                 var check = new CheckBox { Content = app.Name, IsChecked = selected.Contains(app.Id) };

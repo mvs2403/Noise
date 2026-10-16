@@ -28,6 +28,22 @@ internal sealed class WindowsAudio : IAudioBackend
     public IReadOnlyList<AudioDevice> Inputs() => Devices(DataFlow.Capture);
     private static string? Executable(int pid)
     {
+        // Packaged apps (including new Teams) change install paths on update.
+        // Their package-family identity stays stable and needs only query access.
+        var process = OpenProcess(0x1000, false, pid);
+        if (process != 0)
+        {
+            try
+            {
+                uint length = 0;
+                if (GetPackageFamilyName(process, ref length, null) == 122 && length < 4096)
+                {
+                    var family = new System.Text.StringBuilder((int)length);
+                    if (GetPackageFamilyName(process, ref length, family) == 0) return "package:" + family;
+                }
+            }
+            finally { CloseHandle(process); }
+        }
         try { using var p = Process.GetProcessById(pid); return p.MainModule?.FileName; }
         catch { return null; } // Protected, elevated, and exited processes are not selectable.
     }
@@ -35,7 +51,7 @@ internal sealed class WindowsAudio : IAudioBackend
     {
         if (pid == Environment.ProcessId || pid == 0) return null;
         var path = Executable(pid);
-        return path == null ? null : new(path, Path.GetFileNameWithoutExtension(path));
+        return path == null ? null : new(path, path.StartsWith("package:") ? path[8..].Split('_')[0] : Path.GetFileNameWithoutExtension(path));
     }
     private record Session(int Pid, string Path, string Device, int Root = 0);
     private static List<Session> Sessions()
@@ -67,7 +83,7 @@ internal sealed class WindowsAudio : IAudioBackend
             using (p)
                 try { if (p.MainWindowHandle != 0 && Application(p.Id) is {} app) apps[app.Id] = app; } catch { }
         }
-        foreach (var session in Sessions()) if (Application(session.Pid) is {} app) apps[app.Id] = app;
+        foreach (var session in Sessions()) if (Application(session.Pid) is {} app) apps.TryAdd(app.Id, app);
         return apps.Values.OrderBy(a => a.Name).ToArray();
     }
     public AudioApplication? CurrentApplication()
@@ -195,6 +211,9 @@ internal sealed class WindowsAudio : IAudioBackend
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "Process32NextW")]
     private static extern bool Process32Next(nint snapshot, ref ProcessEntry entry);
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(nint handle);
+    [DllImport("kernel32.dll")] private static extern nint OpenProcess(uint access, bool inherit, int pid);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetPackageFamilyName(nint process, ref uint length, System.Text.StringBuilder? name);
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct ProcessEntry
     {
