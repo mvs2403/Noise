@@ -42,9 +42,11 @@ def main():
         for dependency in imports(path):
             if re.match(r"(?:vcruntime|msvcp|concrt)\d", dependency) and dependency not in bundled:
                 raise RuntimeError(f"{path.name} requires unbundled {dependency}")
-    required = ["noise_dsp.dll", "rnnoise.dll", "df.dll", "weya_nc.dll", "sherpa-onnx-c-api.dll"]
+    required = ["noise_dsp.dll", "rnnoise.dll", "df.dll", "weya_nc.dll", "sherpa-onnx-c-api.dll", "noise_ort.dll"]
     for name in required:
         if not (stage / "Runtime" / name).is_file(): raise RuntimeError(f"Missing {name}")
+    if "noise_ort.dll" not in imports(stage / "Runtime/sherpa-onnx-c-api.dll"):
+        raise RuntimeError("Sherpa must import the private ONNX Runtime, not Windows' inbox version")
     print("PASS Windows x64 native architecture and portable CRT dependencies")
 
 

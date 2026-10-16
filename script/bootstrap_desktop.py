@@ -14,6 +14,7 @@ import json
 import xml.etree.ElementTree as ET
 import tomllib
 from bootstrap import ROOT, CACHE, fetch, extract, DF_REV, HUSH_REV
+from private_windows_runtime import isolate_onnx_runtime
 
 RN_REV = "70f1d256acd4b34a572f999a05c87bf00b67730d"
 SHERPA_WIN = "sherpa-onnx-v1.13.8-win-x64-shared-MT-Release-no-tts-lib"
@@ -134,6 +135,7 @@ def main():
     sherpa = CACHE / "desktop-sherpa-win"
     if not sherpa.exists(): extract(archive, sherpa)
     for dll in sherpa.rglob("*.dll"): shutil.copy2(dll, runtime / dll.name)
+    isolate_onnx_runtime(runtime)
     rn, df, hush = prepare_sources()
     build = CACHE / "desktop-native-win"
     run("cmake", "-S", ROOT / "Desktop/Native", "-B", build, "-A", "x64", f"-DRNNOISE_SOURCE={rn}")

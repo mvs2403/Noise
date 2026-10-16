@@ -7,7 +7,15 @@ internal static class SelfTest
         try
         {
             if (OperatingSystem.IsWindows())
+            {
                 Check(WindowsAudio.ProcessIdentity(Environment.ProcessId) != null, "Windows process/package identity query");
+                Task.Run(() =>
+                {
+                    var windows = new WindowsAudio();
+                    _ = windows.Outputs(); _ = windows.Inputs(); _ = windows.Applications();
+                }).GetAwaiter().GetResult();
+                Console.WriteLine("PASS Windows process identity and background WASAPI endpoint/session enumeration");
+            }
             var parents = new Dictionary<int, int> { [30] = 20, [20] = 10, [10] = 1, [40] = 1 };
             var paths = new Dictionary<int, string> { [1] = "shell", [10] = "Teams", [20] = "WebView", [30] = "audio-helper", [40] = "other-app" };
             var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Teams", "WebView" };

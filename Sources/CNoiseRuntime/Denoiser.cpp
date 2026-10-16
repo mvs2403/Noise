@@ -22,6 +22,7 @@ struct NRDenoiser {
     int kind;
     std::unique_ptr<MainSpeakerDenoiser> mainSpeaker;
     void *library = nullptr;
+    void *ortLibrary = nullptr;
     void *state = nullptr;
     const SherpaOnnxOnlineSpeechDenoiser *sherpa = nullptr;
     decltype(&SherpaOnnxOnlineSpeechDenoiserRun) sherpaRun = nullptr;
@@ -40,6 +41,15 @@ struct NRDenoiser {
             if (kind == NR_MAIN_SPEAKER) {
                 mainSpeaker = std::make_unique<MainSpeakerDenoiser>(libraries.c_str(), models.c_str());
             } else if (kind == NR_DPDFNET) {
+#ifdef _WIN32
+                // Windows can have an older inbox onnxruntime.dll already loaded.
+                // The packaging script rewrites sherpa's import to a private name.
+                ortLibrary = openLibrary(libraries + "/noise_ort.dll");
+                struct ApiBase { const void *(*getApi)(uint32_t); const char *(*version)(); };
+                auto base = symbol<const ApiBase *(*)()>(ortLibrary, "OrtGetApiBase")();
+                if (!base || !base->getApi(28))
+                    throw std::runtime_error("The bundled ONNX Runtime is incompatible. Reinstall Noise.");
+#endif
                 library = openLibrary(libraries + "/" NR_LIBRARY("sherpa-onnx-c-api"));
                 auto create = symbol<decltype(&SherpaOnnxCreateOnlineSpeechDenoiser)>(library, "SherpaOnnxCreateOnlineSpeechDenoiser");
                 sherpaRun = symbol<decltype(sherpaRun)>(library, "SherpaOnnxOnlineSpeechDenoiserRun");
@@ -83,6 +93,8 @@ struct NRDenoiser {
         state = nullptr; sherpa = nullptr;
         // dlopen is reference counted; release our reference after inference state is destroyed.
         if (library) noise::closeLibrary(library);
+        if (ortLibrary) noise::closeLibrary(ortLibrary);
+        ortLibrary = nullptr;
         library = nullptr;
     }
     ~NRDenoiser() { close(); }

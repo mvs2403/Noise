@@ -54,3 +54,9 @@ virtual devices are provided and licensed separately by their vendors.
 The same pinned DPDFNet, sherpa-onnx, ONNX Runtime, DeepFilterNet3, RNNoise, and
 Hush inputs above are used for desktop builds. Build scripts retain checksums,
 and release source archives include the shared DSP and reproducible build scripts.
+
+On Windows, sherpa-onnx's DLL import name is changed from `onnxruntime.dll` to
+`noise_ort.dll`, and the bundled ONNX Runtime DLL is renamed to match. This avoids
+Windows' older inbox runtime. Inference code and model weights are unchanged.
+The patch is in `script/private_windows_runtime.py`; the distribution includes
+`Licenses/NATIVE-MODIFICATIONS.txt`.
