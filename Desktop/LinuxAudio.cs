@@ -265,7 +265,20 @@ internal sealed class LinuxAudio : IAudioBackend
         }
         return Task.CompletedTask;
     }
-    private void StopSpeakerCore() { var old = speaker; speaker = null; try { old?.Dispose(); } finally { Restore(); } }
+    private void StopSpeakerCore()
+    {
+        var old = speaker;
+        try
+        {
+            if (old != null)
+                foreach (var stream in PulseCommand.List("sink-inputs").Where(e => PulseCommand.Prop(e, "noise.owner") == token + "_speaker"))
+                    PulseCommand.Pactl("set-sink-input-mute", PulseCommand.Text(stream, "index"), "1");
+            // Keep the monitor alive until app links have returned. Removing it
+            // first can leave pending links on older WirePlumber versions.
+            Restore();
+        }
+        finally { speaker = null; old?.Dispose(); }
+    }
     private void StopMicrophoneCore() { var old = microphone; microphone = null; old?.Dispose(); } // Keep a silent virtual microphone until Quit.
     public Task StopSpeaker() => Task.Run(() => { lock (gate) { if (recovered) StopSpeakerCore(); } });
     public Task StopMicrophone() => Task.Run(() => { lock (gate) StopMicrophoneCore(); });
