@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 project(NoiseDSP LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-set(NATIVE "${CMAKE_CURRENT_SOURCE_DIR}/../../Sources/CNoiseRuntime")
 # This directory is Desktop/Native; sources remain shared with SwiftPM.
 get_filename_component(ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(NATIVE "${ROOT}/Sources/CNoiseRuntime")

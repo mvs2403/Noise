@@ -30,6 +30,10 @@ installer includes the filters and .NET runtime and is unsigned. Download links
 require access to this private repository. The screenshots and Mac instructions
 below show the native macOS app; Windows has a matching two-tab tray panel.
 
+<p align="center"><img src="docs/images/desktop-controls.png" width="340" alt="Desktop controls with Speaker and Microphone tabs, app selection, noise cancellation and voice leveling"></p>
+
+*Desktop panel preview with sample app selection.*
+
 <table>
   <tr>
     <th>Speaker · What you hear</th>

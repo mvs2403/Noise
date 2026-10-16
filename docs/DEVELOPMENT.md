@@ -1,5 +1,15 @@
 # Development
 
+The native SwiftUI app remains in `Sources/Noise/`. The Windows tray app is in
+`Desktop/`, built with .NET 10 and Avalonia. Both use the same C++ denoiser,
+strength blend, main-speaker bridge, and voice leveler in `Sources/CNoiseRuntime/`.
+Only the macOS Core Audio pipeline remains Objective-C++.
+
+For the Windows build, prerequisites and routing behavior, see [Windows](WINDOWS.md).
+`script/build_desktop.ps1` creates the installer, portable ZIP, source archive,
+checksums, and an exact-commit manifest. No Windows build tools are required on
+an end user's computer.
+
 ## Build and run
 
 Requirements: an Apple Silicon Mac, macOS 14.2+, Xcode/command-line tools with

@@ -152,14 +152,14 @@ internal sealed class ControlWindow : Window
     private async Task SettingsWindow()
     {
         var panel = Column(14); var window = Dialog("Noise settings", panel, 620);
+        var processingChoices = new List<(ChannelSettings Channel, ComboBox Engine, ComboBox Voices)>();
         panel.Children.Add(new TextBlock { Text = "Audio processing", FontSize = 20, FontWeight = FontWeight.SemiBold });
         foreach (var pair in new[] { ("Speaker", settings.Speaker), ("Microphone", settings.Microphone) })
         {
             panel.Children.Add(Label(pair.Item1));
             var engines = new ComboBox { ItemsSource = new[] { "DPDFNet (default)", "DeepFilterNet 3", "RNNoise" }, SelectedIndex = pair.Item2.Engine, HorizontalAlignment = HorizontalAlignment.Stretch };
-            engines.SelectionChanged += (_, _) => { if (engines.SelectedIndex >= 0) pair.Item2.Engine = engines.SelectedIndex; };
             var voices = new ComboBox { ItemsSource = new[] { "All voices", "Main speaker only (experimental)" }, SelectedIndex = pair.Item2.MainSpeaker ? 1 : 0, HorizontalAlignment = HorizontalAlignment.Stretch };
-            voices.SelectionChanged += (_, _) => pair.Item2.MainSpeaker = voices.SelectedIndex == 1;
+            processingChoices.Add((pair.Item2, engines, voices));
             panel.Children.Add(engines); panel.Children.Add(voices);
         }
         panel.Children.Add(Label("Main speaker is automatic and uses the Hush model. No voice sample is required. It can attenuate the foreground voice in difficult audio."));
@@ -180,6 +180,11 @@ internal sealed class ControlWindow : Window
         panel.Children.Add(Button("Virtual cable installation guide", () => { OpenUrl("https://github.com/mvs2403/Noise/blob/main/docs/WINDOWS.md"); return Task.CompletedTask; }));
         panel.Children.Add(Button("Apply settings", async () =>
         {
+            foreach (var choice in processingChoices)
+            {
+                choice.Channel.Engine = Math.Max(0, choice.Engine.SelectedIndex);
+                choice.Channel.MainSpeaker = choice.Voices.SelectedIndex == 1;
+            }
             settings.IncomingDevice = (incoming.SelectedItem as AudioDevice)?.Id ?? "";
             settings.MicrophoneDevice = (mic.SelectedItem as AudioDevice)?.Id ?? "";
             settings.CleanMicrophoneDevice = (cleanedMic.SelectedItem as AudioDevice)?.Id ?? "";
