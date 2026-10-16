@@ -17,6 +17,7 @@ internal static class LinuxRoutingTest
             }
             if (predicate()) return; await Task.Delay(100);
         }
+        foreach (var kind in new[] { "sinks", "sink-inputs" }) Console.Error.WriteLine(kind + ": " + PulseCommand.Pactl("--format=json", "list", kind));
         throw new Exception("Timed out: " + message);
     }
     private static string SinkOf(string app)
@@ -92,6 +93,7 @@ internal static class LinuxRoutingTest
             }
             Console.WriteLine("PASS cleaned virtual microphone is readable by another audio client");
             await audio.StopSpeaker();
+            Console.WriteLine($"After stopping: A={SinkOf(appA)} B={SinkOf(appB)} default={PulseCommand.Pactl("get-default-sink")} expected={b}");
             await Until(() => SinkOf(appA) == b && SinkOf(appB) == b, audio, "apps returning to the current default after stopping");
             Check(SinkOf(appC) == unselectedOutput, "stopping must not change the unselected app's current output");
             Console.WriteLine("PASS stopping restores selected app routing");

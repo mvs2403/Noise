@@ -204,7 +204,9 @@ internal sealed class LinuxAudio : IAudioBackend
             var id = PulseCommand.Text(stream, "index");
             if (sinks.GetValueOrDefault(PulseCommand.Text(stream, "sink")) != journal.Incoming) continue;
             var original = journal.OriginalSinks.GetValueOrDefault(id, "");
-            PulseCommand.Pactl("move-sink-input", id, journal.FollowDefault.Contains(id) ? DefaultOutput() : sinks.Values.Contains(original) ? original : DefaultOutput());
+            var destination = journal.FollowDefault.Contains(id) ? DefaultOutput() : sinks.Values.Contains(original) ? original : DefaultOutput();
+            if (Environment.GetEnvironmentVariable("NOISE_TEST_AUDIO") == "1") Console.WriteLine($"RESTORE stream={id} original={original} follow={journal.FollowDefault.Contains(id)} target={destination}");
+            PulseCommand.Pactl("move-sink-input", id, destination);
         }
         journal.OriginalSinks.Clear(); journal.FollowDefault.Clear(); SaveJournal();
     }
