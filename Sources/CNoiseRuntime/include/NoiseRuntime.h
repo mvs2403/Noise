@@ -68,10 +68,9 @@ NRStats nr_pipeline_stats(NRPipeline *);
 // Stops capture/tap first (restoring the original app), output second, worker last.
 void nr_pipeline_destroy(NRPipeline *);
 
-#endif
-
 // Test-only entry point for the same bounded SPSC queue used by audio callbacks.
 bool nr_ring_self_test(void);
+#endif
 #ifdef __cplusplus
 }
 #endif

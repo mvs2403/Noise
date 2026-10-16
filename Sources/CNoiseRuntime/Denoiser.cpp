@@ -51,7 +51,7 @@ struct NRDenoiser {
                 config.model.num_threads = 1;
                 config.model.provider = "cpu";
                 if (!std::filesystem::exists(std::filesystem::u8path(path)))
-                    throw std::runtime_error("DPDFNet model is missing. Run script/bootstrap.py.");
+                    throw std::runtime_error("DPDFNet model is missing. Reinstall Noise or rebuild its dependencies.");
                 sherpa = create(&config);
                 if (!sherpa) throw std::runtime_error("DPDFNet could not load its model.");
             } else if (kind == NR_DEEPFILTERNET) {
@@ -62,7 +62,7 @@ struct NRDenoiser {
                 auto frameLength = symbol<size_t (*)(void *)>(library, "df_get_frame_length");
                 const auto path = models + "/DeepFilterNet3_onnx.tar.gz";
                 if (!std::filesystem::exists(std::filesystem::u8path(path)))
-                    throw std::runtime_error("DeepFilterNet3 model is missing. Run script/bootstrap.py.");
+                    throw std::runtime_error("DeepFilterNet3 model is missing. Reinstall Noise or rebuild its dependencies.");
                 state = create(path.c_str(), 100.0f, nullptr);
                 if (!state || frameLength(state) != blockSize)
                     throw std::runtime_error("DeepFilterNet3 returned an unsupported frame size.");
