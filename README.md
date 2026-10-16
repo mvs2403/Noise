@@ -22,7 +22,7 @@ microphone to your call app. Each direction has independent controls.
 | Platform | Package | Setup |
 | --- | --- | --- |
 | macOS 14.2+, Apple Silicon | [DMG · 0.1.0](https://github.com/mvs2403/Noise/releases/download/v0.1.0/Noise-0.1.0-apple-silicon.dmg) | [Mac quick start](#quick-start) |
-| Windows 11, x64 | [Installer · 0.2.0](https://github.com/mvs2403/Noise/releases/download/v0.2.0/Noise-0.2.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/mvs2403/Noise/releases/download/v0.2.0/Noise-0.2.0-windows-x64.zip) | [Windows routing guide](docs/WINDOWS.md) |
+| Windows 11, x64 | [Installer · 0.3.0](https://github.com/mvs2403/Noise/releases/download/v0.3.0/Noise-0.3.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/mvs2403/Noise/releases/download/v0.3.0/Noise-0.3.0-windows-x64.zip) | [Windows routing guide](docs/WINDOWS.md) |
 | Linux x64, glibc 2.39+ | [Debian package · 0.3.0](https://github.com/mvs2403/Noise/releases/download/v0.3.0/Noise-0.3.0-linux-x64.deb) · [Portable archive](https://github.com/mvs2403/Noise/releases/download/v0.3.0/Noise-0.3.0-linux-x64.tar.gz) | [Linux setup](docs/LINUX.md) |
 
 Windows uses installed virtual audio devices. Two independent cable pairs are
@@ -61,10 +61,10 @@ provides a virtual microphone. Window picking requires X11; checkboxes work on W
   speech after filtering. It stops with cancellation and remembers your choice.
 - **Adjust reduction live.** A 0–100% slider appears beneath cancellation in the
   menu bar while enabled. Each direction remembers its own strength.
-- **Follow your Mac's speakers.** **Follow Mac output** is the default. Switching
-  the macOS output reconnects Noise to the new device. A fixed override is available.
-- **Stay out of the way.** Close the main window and keep using the menu bar,
-  without a Dock icon. Quit from the panel's power button.
+- **Follow your system output.** Switching headphones or speakers reconnects
+  Noise to the current output. On macOS, a fixed override is also available.
+- **Stay out of the way.** Use the menu bar on macOS or the tray on Windows
+  and Linux. Linux keeps an accessible window if the desktop lacks a tray host.
 
 DPDFNet is the default engine. Settings also offers DeepFilterNet3, RNNoise, and
 an experimental automatic **Main speaker** mode. No voice enrollment is needed.
@@ -163,7 +163,7 @@ more of the selected filter. Overlapping voices are leveled as a combined signal
 
 ## Privacy and permissions
 
-Processing runs on this Mac. Noise does not record, transcribe, or upload calls.
+Processing runs on your device. Noise does not record, transcribe, or upload calls.
 Incoming filtering needs **System Audio Recording** permission; outgoing
 filtering also needs **Microphone** permission. The optional virtual driver asks
 for administrator access only during installation/removal.
@@ -199,7 +199,7 @@ This is a development beta. Processing is mono and intended for speech, includin
 all sound from selected apps. Music, shared videos, and notifications from those
 apps are filtered too. Background voices and distortion can remain.
 
-**28 automated audio tests pass.** Local checks cover engine streaming, reduction
+**28 macOS audio tests pass.** Local checks cover engine streaming, reduction
 strength, leveling, peak protection, queue integrity, multi-app selection,
 foreground sessions, and output-routing policy. Two local apps have played through
 a shared incoming route. Live Teams routing, administrator driver installation,
@@ -215,7 +215,9 @@ cd Noise
 Building needs an Apple Silicon Mac, Xcode with Swift 6+, and Python 3.12+.
 The first build fetches pinned dependencies; subsequent use works offline.
 
-- [Developer guide](docs/DEVELOPMENT.md): build commands, tests, DSP behavior and architecture.
+- [Windows setup and development](docs/WINDOWS.md).
+- [Linux setup and development](docs/LINUX.md).
+- [Developer guide](docs/DEVELOPMENT.md): macOS build commands, tests, DSP behavior and architecture.
 - [Distribution guide](docs/DISTRIBUTION.md): packaging, checksums, private access and signing.
 - [Release notes](docs/releases/0.1.0.md): what is included in this beta.
 - [Third-party notices](THIRD_PARTY_NOTICES.md): upstream projects, revisions and licenses.

@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
                 audio.diagnostics();
                 throw std::runtime_error("Audio processing fell behind. Choose a faster engine, such as RNNoise.");
             }
-            if (audio.output.count() >= 1440 || audio.input.count() == 0) {
+            if (audio.output.count() >= 1440 || audio.input.count() < 480) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1)); continue;
             }
             auto n = audio.input.pop(source.data(), audio.input.count() > 2880 ? 481 : 480);

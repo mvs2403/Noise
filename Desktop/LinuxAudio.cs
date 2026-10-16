@@ -156,13 +156,22 @@ internal sealed class LinuxAudio : IAudioBackend
     {
         if (journal.Incoming.Length > 0) return;
         journal.Incoming = "noise_in_" + token; SaveJournal();
-        Module("module-null-sink", journal.Incoming, "sink_name=" + journal.Incoming, "rate=48000", "channels=1", "channel_map=mono", "sink_properties=device.description=Noise_Incoming");
+        NullSink(journal.Incoming, "Noise_Incoming");
+    }
+    private void NullSink(string name, string description)
+    {
+        var args = new List<string> { "sink_name=" + name, "rate=48000", "channels=1", "channel_map=mono", "sink_properties=device.description=" + description };
+        // PulseAudio's default null sink can render two seconds ahead while idle.
+        // The live microphone must also run before a calling app opens its source.
+        // norewinds caps this bus at 50 ms; PipeWire clocks its own graph instead.
+        if (!PulseCommand.Pactl("info").Contains("PipeWire", StringComparison.OrdinalIgnoreCase)) args.Add("norewinds=1");
+        Module("module-null-sink", name, args.ToArray());
     }
     private void EnsureMicrophone()
     {
         if (journal.MicSink.Length > 0) return;
         journal.MicSink = "noise_mic_" + token; journal.MicSource = "noise_microphone_" + token; SaveJournal();
-        Module("module-null-sink", journal.MicSink, "sink_name=" + journal.MicSink, "rate=48000", "channels=1", "channel_map=mono", "sink_properties=device.description=Noise_Microphone_Bus");
+        NullSink(journal.MicSink, "Noise_Microphone_Bus");
         Module("module-remap-source", journal.MicSource, "master=" + journal.MicSink + ".monitor", "source_name=" + journal.MicSource, "channels=1", "channel_map=mono", "source_properties=device.description=Noise_Microphone");
     }
     private void RouteSelected()
