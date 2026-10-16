@@ -51,6 +51,7 @@ internal static class LinuxRoutingTest
             }
             modules.Add(PulseCommand.Pactl("load-module", "module-remap-source", "master=" + mic + ".monitor", "source_name=" + source, "channels=1"));
             PulseCommand.Pactl("set-default-sink", a);
+            await Until(() => PulseCommand.Pactl("get-default-sink") == a, audio, "initial default output policy");
             fixtures.Add(new(appA, a, .03f)); fixtures.Add(new(appB, a, .02f)); fixtures.Add(new(appC, a, .01f));
             fixtures.Add(new("noise.test.mic." + token, mic, .04f));
             var s = new Settings { Applications = ["app:" + appA, "app:" + appB], MicrophoneDevice = source,
@@ -64,7 +65,7 @@ internal static class LinuxRoutingTest
             Check(Math.Abs(raw.OutputRms/raw.InputRms - 1) < .05, "cancellation off must also bypass leveling");
             Console.WriteLine("PASS two selected applications share one route; unselected app unchanged; original audio passes through");
             PulseCommand.Pactl("set-default-sink", b);
-            await Until(() => PulseCommand.List("sink-inputs").Any(e => PulseCommand.Prop(e, "noise.owner").EndsWith("_speaker") &&
+            await Until(() => PulseCommand.Pactl("get-default-sink") == b && PulseCommand.List("sink-inputs").Any(e => PulseCommand.Prop(e, "noise.owner").EndsWith("_speaker") &&
                 PulseCommand.List("sinks").Any(d => PulseCommand.Text(d, "index") == PulseCommand.Text(e, "sink") && PulseCommand.Text(d, "name") == b)), audio, "default output follow");
             Console.WriteLine("PASS incoming output follows system default changes");
             s.Speaker.Enabled = true; audio.SettingsChanged();
@@ -91,13 +92,13 @@ internal static class LinuxRoutingTest
             }
             Console.WriteLine("PASS cleaned virtual microphone is readable by another audio client");
             await audio.StopSpeaker();
-            Check(SinkOf(appA) == b && SinkOf(appB) == b, "apps that started on the default should return to its current device");
+            await Until(() => SinkOf(appA) == b && SinkOf(appB) == b, audio, "apps returning to the current default after stopping");
             Check(SinkOf(appC) == unselectedOutput, "stopping must not change the unselected app's current output");
             Console.WriteLine("PASS stopping restores selected app routing");
             await audio.StartSpeaker(s); audio.SimulateCrashForTest();
             var recovery = new LinuxAudio(); recovery.Update();
             Check(recovery.PollError() == null, "recovery must succeed");
-            Check(SinkOf(appA) == b && SinkOf(appB) == b, "crash recovery restores apps");
+            await Until(() => SinkOf(appA) == b && SinkOf(appB) == b, recovery, "crash recovery restoring apps");
             await recovery.DisposeAsync();
             Console.WriteLine("PASS recovery journal restores routing and removes stale virtual devices");
         }
