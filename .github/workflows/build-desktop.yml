@@ -1,0 +1,22 @@
+name: Desktop packages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build and verify Windows packages
+        shell: pwsh
+        run: ./script/build_desktop.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: dist/desktop/*
+          if-no-files-found: error
