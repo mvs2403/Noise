@@ -1,0 +1,4 @@
+Avalonia 12.1.4: https://github.com/AvaloniaUI/Avalonia/blob/2d79ba55fae1b1e71c69f93a668080c9029e6a31/licence.md
+NAudio 3.2.0: https://github.com/naudio/NAudio/blob/v3.2.0/LICENSE
+MicroCom 0.11.6: https://github.com/kekekeks/MicroCom/blob/76785efcafd91b5902fd19dd11145f6dd655b7b4/LICENSE
+Additional copyright/license metadata and package-supplied notices are copied from the exact NuGet packages pinned by packages.lock.json.

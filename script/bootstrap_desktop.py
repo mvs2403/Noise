@@ -54,6 +54,8 @@ def models_and_licenses(output, rn, df, hush):
     shutil.copy2(rn / "COPYING", licenses / "RNNoise-COPYING")
     for path in df.glob("LICENSE*"): shutil.copy2(path, licenses / ("DeepFilterNet-" + path.name))
     shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", licenses / "THIRD_PARTY_NOTICES.md")
+    for path in (ROOT / "Desktop/Licenses").glob("*"):
+        if path.is_file(): shutil.copy2(path, licenses / path.name)
     # Native Rust dependencies' license texts accompany the complete source archives.
     shutil.copy2(ROOT / "Desktop/packages.lock.json", licenses / "NuGet-packages.lock.json")
     collect_nuget_notices(licenses)
