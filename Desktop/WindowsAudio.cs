@@ -9,6 +9,7 @@ namespace Noise;
 internal sealed class WindowsAudio : IAudioBackend
 {
     private WindowsRoute? speaker, microphone;
+    private readonly SemaphoreSlim transition = new(1, 1);
     private Settings? settings;
     private HashSet<int> capturedRoots = [];
     private string? error;
@@ -128,21 +129,28 @@ internal sealed class WindowsAudio : IAudioBackend
             throw new InvalidOperationException("Route every selected app to the Incoming cable in Windows Volume mixer first. This prevents hearing original and cleaned audio together.");
         return sessions;
     }
-    public async Task StartSpeaker(Settings s)
+    private async Task Serialized(Func<Task> action)
     {
-        await StopSpeaker(); settings = s;
+        await transition.WaitAsync();
+        try { await action(); } finally { transition.Release(); }
+    }
+    public Task StartSpeaker(Settings s) => Serialized(() => StartSpeakerCore(s));
+    private async Task StartSpeakerCore(Settings s)
+    {
+        await StopSpeakerCore(); settings = s;
         ValidateEndpoints(s, DefaultOutput());
         var sessions = SelectedSessions(s);
         if (s.Applications.Count == 0 || sessions.Count == 0)
             throw new InvalidOperationException("Select an app, start audio in it, and route it to the Incoming cable in Windows Volume mixer. Then turn filtering on.");
         var parents = Parents();
         var pids = sessions.Select(x => Root(x.Pid, x.Path, parents)).Distinct().ToArray();
-        speaker = await WindowsRoute.Create(s.Speaker, pids, null, null);
         capturedRoots = pids.ToHashSet();
+        speaker = await WindowsRoute.Create(s.Speaker, pids, null, null);
     }
-    public async Task StartMicrophone(Settings s)
+    public Task StartMicrophone(Settings s) => Serialized(() => StartMicrophoneCore(s));
+    private async Task StartMicrophoneCore(Settings s)
     {
-        await StopMicrophone(); settings = s;
+        await StopMicrophoneCore(); settings = s;
         if (string.IsNullOrEmpty(s.MicrophoneDevice) || string.IsNullOrEmpty(s.CleanMicrophoneDevice))
             throw new InvalidOperationException("Choose a physical microphone and a cleaned-microphone virtual cable in Settings first.");
         if (s.CleanMicrophoneDevice == DefaultOutput() || s.CleanMicrophoneDevice == s.IncomingDevice)
@@ -154,8 +162,10 @@ internal sealed class WindowsAudio : IAudioBackend
             throw new InvalidOperationException("Choose a physical microphone as the input, not a virtual cable recording device.");
         microphone = await WindowsRoute.Create(s.Microphone, [], s.MicrophoneDevice, s.CleanMicrophoneDevice);
     }
-    public async Task StopSpeaker() { var route = speaker; speaker = null; if (route != null) await route.DisposeAsync(); }
-    public async Task StopMicrophone() { var route = microphone; microphone = null; if (route != null) await route.DisposeAsync(); }
+    public Task StopSpeaker() => Serialized(StopSpeakerCore);
+    public Task StopMicrophone() => Serialized(StopMicrophoneCore);
+    private async Task StopSpeakerCore() { var route = speaker; speaker = null; if (route != null) await route.DisposeAsync(); }
+    private async Task StopMicrophoneCore() { var route = microphone; microphone = null; if (route != null) await route.DisposeAsync(); }
     public void Update() { CurrentApplication(); }
     public string? PollError()
     {

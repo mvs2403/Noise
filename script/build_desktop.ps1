@@ -36,4 +36,4 @@ if ($LASTEXITCODE) { throw 'Source archive failed' }
 python script/desktop_manifest.py --platform windows-x64 --stage $stage --output $dist
 if ($LASTEXITCODE) { throw 'Release manifest failed' }
 # Inspect the unsigned installer without installing drivers or changing audio defaults.
-Get-ChildItem $dist -File | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content (Join-Path $dist 'SHA256SUMS.txt')
+Get-ChildItem $dist -File | Where-Object Name -ne 'SHA256SUMS.txt' | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content (Join-Path $dist 'SHA256SUMS.txt')
