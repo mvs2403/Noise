@@ -70,6 +70,9 @@ internal static class LinuxRoutingTest
             s.Speaker.Enabled = true; audio.SettingsChanged();
             await Until(() => audio.SpeakerMetrics is { Frames: >= 300 } m && m.OutputRms < m.InputRms * .8, audio, "live noise suppression");
             Console.WriteLine("PASS live cancellation control reduces generated stationary noise");
+            // The desktop may move unselected apps when its default changes.
+            // Noise must preserve that normal policy when restoring its own apps.
+            string unselectedOutput = SinkOf(appC);
             await audio.StartMicrophone(s);
             await Until(() => audio.MicrophoneMetrics is { Frames: >= 100, InputRms: > .01 }, audio, "microphone processing");
             var read = new ProcessStartInfo("parec") { RedirectStandardOutput = true, RedirectStandardError = true };
@@ -89,7 +92,7 @@ internal static class LinuxRoutingTest
             Console.WriteLine("PASS cleaned virtual microphone is readable by another audio client");
             await audio.StopSpeaker();
             Check(SinkOf(appA) == b && SinkOf(appB) == b, "apps that started on the default should return to its current device");
-            Check(SinkOf(appC) == a, "fixed unselected output remains unchanged");
+            Check(SinkOf(appC) == unselectedOutput, "stopping must not change the unselected app's current output");
             Console.WriteLine("PASS stopping restores selected app routing");
             await audio.StartSpeaker(s); audio.SimulateCrashForTest();
             var recovery = new LinuxAudio(); recovery.Update();

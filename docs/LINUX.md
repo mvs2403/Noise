@@ -21,8 +21,8 @@ run `./Noise`. No kernel audio driver is needed.
 3. Turn cancellation on. Apps are routed automatically into one shared filter.
 4. Adjust the reduction slider and Voice leveling toggle as needed.
 
-New streams from selected apps are picked up while filtering runs. Other apps
-keep their routes. System output changes reconnect Noise automatically, with a
+New streams from selected apps are picked up while filtering runs. Noise leaves
+other apps under the desktop's normal routing policy. System output changes reconnect Noise automatically, with a
 brief pause. Removing an app or stopping restores its previous output; apps
 that started on the default return to the current system default.
 
