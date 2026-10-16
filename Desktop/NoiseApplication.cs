@@ -71,6 +71,7 @@ public sealed class NoiseApplication : Application
 
 internal sealed class PreviewAudio : IAudioBackend
 {
+    public bool AutomaticAppRouting => OperatingSystem.IsLinux();
     public string SetupInstructions => "Virtual cable setup";
     public bool SpeakerRunning => false;
     public bool MicrophoneRunning => false;
