@@ -115,7 +115,7 @@ internal sealed class LinuxAudio : IAudioBackend
     public IReadOnlyList<AudioDevice> Outputs() => PulseCommand.List("sinks").Where(e => !PulseCommand.Text(e, "name").StartsWith("noise_")).Select(Device).ToArray();
     public IReadOnlyList<AudioDevice> Inputs() => PulseCommand.List("sources").Where(e =>
         !PulseCommand.Text(e, "name").StartsWith("noise_") && !PulseCommand.Text(e, "name").EndsWith(".monitor") &&
-        (PulseCommand.Text(e, "monitor_of_sink") is "" or "null" or "4294967295")).Select(Device).ToArray();
+        (PulseCommand.Text(e, "monitor_of_sink") is "" or "null" or "4294967295" or "-1" or "n/a")).Select(Device).ToArray();
     private static AudioDevice Device(JsonElement e) => new(PulseCommand.Text(e, "name"), PulseCommand.Text(e, "description"));
     public IReadOnlyList<AudioApplication> Applications() => PulseCommand.List("sink-inputs").Where(e => !Owned(e))
         .GroupBy(AppId).Select(g => new AudioApplication(g.Key, PulseCommand.Prop(g.First(), "application.name") is { Length: > 0 } name ? name : g.Key)).OrderBy(a => a.Name).ToArray();
