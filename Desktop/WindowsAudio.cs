@@ -235,6 +235,7 @@ internal sealed class WindowsRoute : IAsyncDisposable
         foreach (int pid in input != null ? new[] { 0 } : pids)
         {
             var builder = new WasapiRecorderBuilder().WithFormat(WaveFormat.CreateIeeeFloatWaveFormat(48000, 1))
+                .WithBufferLength(20)
                 .WithMmcssThreadPriority("Pro Audio");
             if (input != null) { var d = e.GetDevice(input); devices.Add(d); builder.WithDevice(d); }
             else builder.WithProcessLoopback((uint)pid, ProcessLoopbackMode.IncludeTargetProcessTree);
@@ -268,8 +269,11 @@ internal sealed class WindowsRoute : IAsyncDisposable
                 Array.Clear(mixed);
                 foreach (var ring in sources)
                 {
-                    if (ring.Count < 480) continue;
-                    int count = ring.Count > 2880 ? 481 : 480;
+                    int available = ring.Count;
+                    if (available == 0) continue;
+                    // A partial packet must be stretched into this output block,
+                    // rather than dropping a whole 10 ms of speech at a clock boundary.
+                    int count = Math.Min(available, available > 2880 ? 481 : 480);
                     ring.Pop(scratch.AsSpan(0, count));
                     for (int i = 0; i < 480; ++i)
                     {
