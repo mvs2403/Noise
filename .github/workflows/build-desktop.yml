@@ -1,10 +1,17 @@
 name: Desktop packages
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Desktop packages to build
+        type: choice
+        default: linux
+        options: [windows, linux, both]
 permissions:
   contents: read
 jobs:
   windows:
+    if: inputs.platform != 'linux'
     runs-on: windows-2025
     timeout-minutes: 45
     steps:
@@ -38,5 +45,45 @@ jobs:
         if: always()
         with:
           name: windows-packages
+          path: dist/desktop/*
+          if-no-files-found: ignore
+  linux:
+    if: inputs.platform != 'windows'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install native audio and UI build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake pkg-config libpulse-dev pulseaudio pulseaudio-utils patchelf xvfb dbus-x11 xdotool libx11-6 libice6 libsm6 libfontconfig1 libfreetype6 libxkbcommon0 libxext6 libxrandr2 libxcursor1 libxi6 libxrender1 libgl1 fonts-dejavu-core
+      - uses: actions/cache/restore@v4
+        id: native-cache
+        with:
+          path: |
+            .cache/desktop-rust-linux
+            .cache/desktop-sources
+            .cache/desktop-sherpa-linux
+            ~/.cargo/registry
+          key: linux-native-v1-${{ hashFiles('script/bootstrap_desktop.py', 'Vendor/DeepFilterNet.Cargo.lock') }}
+          restore-keys: linux-native-v1-
+      - name: Build and verify Linux packages
+        run: ./script/build_desktop_linux.sh
+      - uses: actions/cache/save@v4
+        if: always() && steps.native-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            .cache/desktop-rust-linux
+            .cache/desktop-sources
+            .cache/desktop-sherpa-linux
+            ~/.cargo/registry
+          key: linux-native-v1-${{ hashFiles('script/bootstrap_desktop.py', 'Vendor/DeepFilterNet.Cargo.lock') }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-packages
           path: dist/desktop/*
           if-no-files-found: ignore
