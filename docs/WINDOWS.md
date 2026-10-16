@@ -89,7 +89,7 @@ on a Windows PC. The package is a beta, not a claim of hardware certification.
 
 ## Build from source
 
-Use Windows 11 x64, .NET SDK 10, Visual Studio 2022/2025 C++ build tools,
+Use Windows 11 x64, .NET SDK 10, Visual Studio C++ build tools with the x64 toolset,
 Python 3.12+, Rust/rustup, CMake, and NSIS (or Chocolatey to install NSIS).
 Run `pwsh ./script/build_desktop.ps1`. It downloads pinned inputs, builds native
 filters, runs offline tests and a GUI smoke test, and produces `dist/desktop`.

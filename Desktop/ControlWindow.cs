@@ -45,8 +45,8 @@ internal sealed class ControlWindow : Window
             polling = true;
             try
             {
-                backend.Update();
-                if (backend.PollError() is {} error) { await StopAll(); status.Text = error; }
+                var error = await Task.Run(() => { backend.Update(); return backend.PollError(); });
+                if (error != null) { await StopAll(); status.Text = error; }
             }
             catch (Exception e) { status.Text = e.Message; }
             finally { polling = false; }
