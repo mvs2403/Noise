@@ -7,7 +7,7 @@
 Noise cancellation for the apps you hear and the microphone others hear.</p>
 <p align="center">
   <a href="https://github.com/mvs2403/Noise/releases/download/v0.1.0/Noise-0.1.0-apple-silicon.dmg"><strong>Download for Mac</strong></a>
-  · <a href="https://github.com/mvs2403/Noise/releases/tag/v0.1.0">Release files</a>
+  · <a href="https://github.com/mvs2403/Noise/releases">All releases</a>
   · <a href="#quick-start">Quick start</a>
   · <a href="docs/DEVELOPMENT.md">Developer guide</a>
 </p>
@@ -28,8 +28,7 @@ microphone to your call app. Each direction has independent controls.
 Windows uses installed virtual audio devices. Two independent cable pairs are
 needed for both directions together; drivers are installed separately. The
 installer includes the filters and .NET runtime and is unsigned. The repository
-and release downloads are public; no GitHub account is required. The screenshots and Mac instructions
-below show the native macOS app; Windows has a matching two-tab tray panel.
+and release downloads are public; no GitHub account is required.
 
 Linux routes selected apps automatically through PulseAudio/PipeWire-Pulse and
 provides a virtual microphone. Window picking requires X11; checkboxes work on Wayland.
@@ -38,9 +37,15 @@ provides a virtual microphone. Window picking requires X11; checkboxes work on W
 apps' calls through ordinary public APIs. Mobile scope is being evaluated;
 there is no iOS or Android release yet. See [mobile capabilities](docs/MOBILE.md).
 
-<p align="center"><img src="docs/images/desktop-controls.png" width="340" alt="Desktop controls with Speaker and Microphone tabs, app selection, noise cancellation and voice leveling"></p>
+<table>
+  <tr><th>Windows</th><th>Linux</th></tr>
+  <tr>
+    <td><img src="docs/images/windows-controls.png" width="300" alt="Windows panel with Speaker and Microphone tabs, application selection, and voice leveling disabled while cancellation is off"></td>
+    <td><img src="docs/images/linux-controls.png" width="300" alt="Linux panel with Speaker and Microphone tabs, application selection, and voice leveling disabled while cancellation is off"></td>
+  </tr>
+</table>
 
-*Desktop panel preview with sample app selection.*
+*Windows and Linux 0.3.0 screenshots from native build checks, with sample app selections.*
 
 <table>
   <tr>
@@ -53,7 +58,7 @@ there is no iOS or Android release yet. See [mobile capabilities](docs/MOBILE.md
   </tr>
 </table>
 
-*Screenshots show the native interface with sample app and device labels.*
+*The macOS screenshots show the native interface with sample app and device labels.*
 
 ## What it does
 
@@ -73,7 +78,17 @@ there is no iOS or Android release yet. See [mobile capabilities](docs/MOBILE.md
 DPDFNet is the default engine. Settings also offers DeepFilterNet3, RNNoise, and
 an experimental automatic **Main speaker** mode. No voice enrollment is needed.
 
+| Routing | macOS | Windows | Linux |
+| --- | --- | --- | --- |
+| Selected apps | Automatic process capture | Route apps to an installed virtual cable in Volume mixer, then select them in Noise | Automatic routing through PulseAudio/PipeWire-Pulse |
+| Microphone in your call app | **Noise Microphone**, after optional driver setup | The recording endpoint paired with your second virtual cable | **Noise_Microphone**, created by Noise |
+| App selection | Checkboxes, current app, click a window | Checkboxes, current app, click a window | Checkboxes; current app and window picking require X11 and xdotool |
+| Before quitting | Return your call app to its physical microphone | Restore apps to Default output and your call app to its physical microphone | Return your call app to its physical microphone; Noise restores selected app routes |
+
 ## Install
+
+The steps below describe macOS. Use the [Windows guide](docs/WINDOWS.md) or
+[Linux guide](docs/LINUX.md) for their packages and audio setup.
 
 1. Download the [Apple Silicon DMG](https://github.com/mvs2403/Noise/releases/download/v0.1.0/Noise-0.1.0-apple-silicon.dmg).
 2. Open it and drag **Noise.app** to **Applications**.
@@ -209,6 +224,13 @@ a shared incoming route. Live Teams routing, administrator driver installation,
 and changing hardware outputs during a live call still need hands-on validation.
 These checks do not establish speech quality across calls.
 
+**Windows and Linux packages pass native automated checks** for all four engines,
+strength and bypass behavior, leveling, bounded queues, and UI launch. Linux
+also passes generated-audio routing checks on both PulseAudio and PipeWire,
+including multi-app filtering, virtual microphone capture, system-output changes,
+audible restarts, and crash recovery. Physical devices, Bluetooth, and real
+calling-app compatibility still need hands-on testing on each platform.
+
 ```sh
 git clone https://github.com/mvs2403/Noise.git
 cd Noise
@@ -223,7 +245,9 @@ The first build fetches pinned dependencies; subsequent use works offline.
 - [iOS and Android capabilities](docs/MOBILE.md).
 - [Developer guide](docs/DEVELOPMENT.md): macOS build commands, tests, DSP behavior and architecture.
 - [Distribution guide](docs/DISTRIBUTION.md): packaging, checksums, public downloads and signing.
-- [Release notes](docs/releases/0.1.0.md): what is included in this beta.
+- Release notes: [macOS 0.1.0](docs/releases/0.1.0.md),
+  [Windows 0.2.0](docs/releases/0.2.0.md), and
+  [Linux and refreshed Windows 0.3.0](docs/releases/0.3.0.md).
 - [Third-party notices](THIRD_PARTY_NOTICES.md): upstream projects, revisions and licenses.
 
 The separately bundled Noise Microphone driver is derived from BlackHole and is
