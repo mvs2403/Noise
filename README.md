@@ -33,9 +33,20 @@ and release downloads are public; no GitHub account is required.
 Linux routes selected apps automatically through PulseAudio/PipeWire-Pulse and
 provides a virtual microphone. Window picking requires X11; checkboxes work on Wayland.
 
-GitHub Packages publication is being set up for the same installers as OCI
-artifact bundles. See [registry retrieval and publishing](docs/GITHUB_PACKAGES.md).
-The Release downloads above remain available for direct installation.
+The same installers are also published on **GitHub Packages** as public OCI
+artifact bundles: [macOS](https://github.com/mvs2403/Noise/pkgs/container/noise-macos-arm64),
+[Windows](https://github.com/mvs2403/Noise/pkgs/container/noise-windows-x64), and
+[Linux](https://github.com/mvs2403/Noise/pkgs/container/noise-linux-x64).
+Use ORAS to retrieve the original installers, checksums, build manifest, and
+matching source archive. For example:
+
+```sh
+oras pull ghcr.io/mvs2403/noise-linux-x64:0.3.0 --output Noise-linux
+```
+
+No GitHub sign-in is needed to pull these public bundles. See
+[registry retrieval, verification, and publishing](docs/GITHUB_PACKAGES.md).
+The Release downloads above provide direct installation files.
 
 **Mobile:** iOS and Android cannot offer the desktop app's filtering of other
 apps' calls through ordinary public APIs. Mobile scope is being evaluated;

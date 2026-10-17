@@ -183,6 +183,14 @@ def publish(bundle, reference, commit, repo, registry_config):
     if actual != expected:
         raise ValueError(f"Registry round-trip verification failed: {reference}")
     print(f"PASS registry download and every file checksum: {immutable}", flush=True)
+    # Backfilling an older release must not move the convenient latest alias back.
+    repository, version = reference.rsplit(":", 1)
+    tags = json.loads(oras("repo", "tags", repository, "--format", "json",
+                           capture_output=True, check=True).stdout)["tags"]
+    versions = [tuple(map(int, tag.split("."))) for tag in tags
+                if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", tag)]
+    if tuple(map(int, version.split("."))) == max(versions):
+        oras("tag", immutable, "latest", check=True)
     return {"reference": reference, "digest": descriptor["digest"],
             "source_commit": commit, "verified_files": len(expected)}
 

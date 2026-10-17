@@ -12,12 +12,14 @@ provides direct downloads with no extra retrieval tool.
 
 | Platform | Package name | Release version |
 | --- | --- | --- |
-| macOS, Apple Silicon | `ghcr.io/mvs2403/noise-macos-arm64` | `0.1.0` |
-| Windows x64 | `ghcr.io/mvs2403/noise-windows-x64` | `0.2.0`, `0.3.0` |
-| Linux x64 | `ghcr.io/mvs2403/noise-linux-x64` | `0.3.0` |
+| macOS, Apple Silicon | [`ghcr.io/mvs2403/noise-macos-arm64`](https://github.com/mvs2403/Noise/pkgs/container/noise-macos-arm64) | `0.1.0` |
+| Windows x64 | [`ghcr.io/mvs2403/noise-windows-x64`](https://github.com/mvs2403/Noise/pkgs/container/noise-windows-x64) | `0.2.0`, `0.3.0` |
+| Linux x64 | [`ghcr.io/mvs2403/noise-linux-x64`](https://github.com/mvs2403/Noise/pkgs/container/noise-linux-x64) | `0.3.0` |
 
-Publication is being set up. Do not assume a package is available until the
-publication workflow and visibility checks have completed.
+These bundles are public and can be pulled without signing into GitHub.
+Explicit version tags are recommended for repeatable downloads. The `latest`
+alias follows each platform's highest published version, including beta releases.
+Backfilling an older release does not move it backward.
 
 Each bundle includes its installers/portable archive, the exact original build
 manifest, matching source archive, installation notes, bundle metadata, and
@@ -54,6 +56,12 @@ binary, verifies each release asset's GitHub digest and checksum, checks the
 build manifest and exact source commit, then publishes one bundle per platform
 present in that release. It pulls each bundle back by registry digest and checks
 every file. Existing version tags with different files are rejected.
+
+The initial mirrors passed these publication checks:
+
+- [Windows and Linux 0.3.0](https://github.com/mvs2403/Noise/actions/runs/39038759062).
+- [Windows 0.2.0](https://github.com/mvs2403/Noise/actions/runs/39038778291).
+- [macOS 0.1.0](https://github.com/mvs2403/Noise/actions/runs/39038845676).
 
 First publication may create a private package even for a public repository.
 Check Package settings and make it public, then verify an anonymous pull.
