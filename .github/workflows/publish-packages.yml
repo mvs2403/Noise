@@ -1,0 +1,49 @@
+name: Publish GitHub Packages
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published release to mirror (existing installers are not rebuilt)
+        required: true
+        type: string
+        default: v0.3.0
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: noise-github-packages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NOISE_RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Install pinned ORAS client
+        run: |
+          mkdir -p "$RUNNER_TEMP/noise-oras"
+          curl --fail --location --silent --show-error https://github.com/oras-project/oras/releases/download/v1.3.4/oras_1.3.4_linux_amd64.tar.gz -o "$RUNNER_TEMP/noise-oras/oras.tar.gz"
+          printf '%s  %s\n' 'f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454' "$RUNNER_TEMP/noise-oras/oras.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/noise-oras/oras.tar.gz" -C "$RUNNER_TEMP/noise-oras" oras
+          echo "$RUNNER_TEMP/noise-oras" >> "$GITHUB_PATH"
+      - name: Authenticate to GitHub Container Registry
+        env:
+          NOISE_REGISTRY_USER: ${{ github.actor }}
+        run: printf '%s' "$GH_TOKEN" | oras login ghcr.io --username "$NOISE_REGISTRY_USER" --password-stdin --registry-config "$RUNNER_TEMP/noise-registry.json"
+      - name: Verify release, publish installers and verify registry downloads
+        run: python3 script/publish_packages.py --release-tag "$NOISE_RELEASE_TAG" --work-dir "$RUNNER_TEMP/noise-packages" --registry-config "$RUNNER_TEMP/noise-registry.json"
+      - name: Save publication digests
+        if: success()
+        run: |
+          cat "$RUNNER_TEMP/noise-packages/publication.json" >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove registry credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/noise-registry.json"
