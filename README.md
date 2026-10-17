@@ -33,6 +33,10 @@ and release downloads are public; no GitHub account is required.
 Linux routes selected apps automatically through PulseAudio/PipeWire-Pulse and
 provides a virtual microphone. Window picking requires X11; checkboxes work on Wayland.
 
+GitHub Packages publication is being set up for the same installers as OCI
+artifact bundles. See [registry retrieval and publishing](docs/GITHUB_PACKAGES.md).
+The Release downloads above remain available for direct installation.
+
 **Mobile:** iOS and Android cannot offer the desktop app's filtering of other
 apps' calls through ordinary public APIs. Mobile scope is being evaluated;
 there is no iOS or Android release yet. See [mobile capabilities](docs/MOBILE.md).

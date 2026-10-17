@@ -47,6 +47,10 @@ The repository and published releases are public. Downloading release packages
 does not require a GitHub account. Repository visibility does not change the
 packages' signing status or the third-party components' licenses.
 
+The [GitHub Packages workflow](GITHUB_PACKAGES.md) can mirror existing published
+installers as OCI artifact bundles, with original build manifests, source, and
+checksums. It verifies registry downloads without rebuilding the applications.
+
 ## Build a release
 
 On an Apple Silicon Mac with Xcode, Swift 6+, and Python 3.12+:
