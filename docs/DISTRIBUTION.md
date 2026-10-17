@@ -1,16 +1,15 @@
 # Distribution
 
-Noise 0.1.0 is an **Apple Silicon private beta**, distributed through
+Noise 0.1.0 is an **Apple Silicon beta**, distributed through
 [GitHub Releases](https://github.com/mvs2403/Noise/releases). It includes the app,
 all models/runtimes, and the optional Noise Microphone driver. Installing the app
 does not require developer tools or an internet connection to download models.
 
 ## Install
 
-1. Sign into GitHub with an account that can access `mvs2403/Noise`.
-2. Download `Noise-0.1.0-apple-silicon.dmg` from the release.
-3. Open the disk image and drag **Noise.app** to **Applications**.
-4. Eject the disk image and open Noise from Applications. Its waveform menu-bar
+1. Download `Noise-0.1.0-apple-silicon.dmg` from the public release.
+2. Open the disk image and drag **Noise.app** to **Applications**.
+3. Eject the disk image and open Noise from Applications. Its waveform menu-bar
    icon remains available after closing the main window.
 
 The ZIP contains the same app as a fallback. Extract it and move Noise.app to
@@ -44,8 +43,9 @@ its line in `SHA256SUMS.txt`. If you downloaded all assets, run this in their fo
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-The repository and its releases are private. Recipients need repository access;
-publishing a private release does not create a public download link.
+The repository and published releases are public. Downloading release packages
+does not require a GitHub account. Repository visibility does not change the
+packages' signing status or the third-party components' licenses.
 
 ## Build a release
 
@@ -70,7 +70,7 @@ It does not install the audio driver or modify system audio devices.
 using `./script/build_and_run.sh`.
 
 The [example GitHub Actions workflow](examples/build-release-workflow.yml) repeats
-this process on an Apple Silicon runner and uploads private workflow artifacts.
+this process on an Apple Silicon runner and uploads workflow artifacts.
 To enable it, copy it into `.github/workflows/build.yml` using GitHub credentials
 that can manage workflows. It runs only when dispatched and does not publish or
 replace a GitHub Release. It is supplied as an example because the credentials

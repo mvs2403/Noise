@@ -1,7 +1,7 @@
 # Noise for Linux
 
 Linux x64, glibc 2.39+, with an existing **PipeWire-Pulse or PulseAudio** desktop
-audio server. Ubuntu 24.04+ is the build baseline. This is an unsigned private beta.
+audio server. Ubuntu 24.04+ is the build baseline. This is an unsigned public beta.
 
 Download the Debian package or portable archive from
 [release 0.3.0](https://github.com/mvs2403/Noise/releases/tag/v0.3.0).

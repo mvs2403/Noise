@@ -11,7 +11,7 @@ Noise cancellation for the apps you hear and the microphone others hear.</p>
   · <a href="#quick-start">Quick start</a>
   · <a href="docs/DEVELOPMENT.md">Developer guide</a>
 </p>
-<p align="center">macOS 14.2+ · Windows 11 x64 · Linux x64 · Private beta</p>
+<p align="center">macOS 14.2+ · Windows 11 x64 · Linux x64 · Public beta</p>
 
 Noise processes call audio locally on your device. Clean the sound arriving from
 Teams, Zoom, a browser, or several apps together, and optionally send a cleaned
@@ -27,12 +27,16 @@ microphone to your call app. Each direction has independent controls.
 
 Windows uses installed virtual audio devices. Two independent cable pairs are
 needed for both directions together; drivers are installed separately. The
-installer includes the filters and .NET runtime and is unsigned. Download links
-require access to this private repository. The screenshots and Mac instructions
+installer includes the filters and .NET runtime and is unsigned. The repository
+and release downloads are public; no GitHub account is required. The screenshots and Mac instructions
 below show the native macOS app; Windows has a matching two-tab tray panel.
 
 Linux routes selected apps automatically through PulseAudio/PipeWire-Pulse and
 provides a virtual microphone. Window picking requires X11; checkboxes work on Wayland.
+
+**Mobile:** iOS and Android cannot offer the desktop app's filtering of other
+apps' calls through ordinary public APIs. Mobile scope is being evaluated;
+there is no iOS or Android release yet. See [mobile capabilities](docs/MOBILE.md).
 
 <p align="center"><img src="docs/images/desktop-controls.png" width="340" alt="Desktop controls with Speaker and Microphone tabs, app selection, noise cancellation and voice leveling"></p>
 
@@ -71,17 +75,16 @@ an experimental automatic **Main speaker** mode. No voice enrollment is needed.
 
 ## Install
 
-1. Sign into GitHub with an account that has access to this private repository.
-2. Download the [Apple Silicon DMG](https://github.com/mvs2403/Noise/releases/download/v0.1.0/Noise-0.1.0-apple-silicon.dmg).
-3. Open it and drag **Noise.app** to **Applications**.
-4. Eject the disk image, then open Noise from Applications. Look for its waveform
+1. Download the [Apple Silicon DMG](https://github.com/mvs2403/Noise/releases/download/v0.1.0/Noise-0.1.0-apple-silicon.dmg).
+2. Open it and drag **Noise.app** to **Applications**.
+3. Eject the disk image, then open Noise from Applications. Look for its waveform
    icon in the macOS menu bar.
 
 All engines and models are bundled. You do **not** need Xcode, Python, Rust, or
 additional model downloads to use the app. A ZIP is available among the
 [release files](https://github.com/mvs2403/Noise/releases/tag/v0.1.0).
 
-> **Private beta signing:** this build is ad hoc signed and is **not notarized**.
+> **Beta signing:** this build is ad hoc signed and is **not notarized**.
 > macOS may block its first launch. After trying to open it, follow Apple's
 > per-app [Open Anyway instructions](https://support.apple.com/102445) in
 > **System Settings → Privacy & Security**, if that option is available.
@@ -217,8 +220,9 @@ The first build fetches pinned dependencies; subsequent use works offline.
 
 - [Windows setup and development](docs/WINDOWS.md).
 - [Linux setup and development](docs/LINUX.md).
+- [iOS and Android capabilities](docs/MOBILE.md).
 - [Developer guide](docs/DEVELOPMENT.md): macOS build commands, tests, DSP behavior and architecture.
-- [Distribution guide](docs/DISTRIBUTION.md): packaging, checksums, private access and signing.
+- [Distribution guide](docs/DISTRIBUTION.md): packaging, checksums, public downloads and signing.
 - [Release notes](docs/releases/0.1.0.md): what is included in this beta.
 - [Third-party notices](THIRD_PARTY_NOTICES.md): upstream projects, revisions and licenses.
 

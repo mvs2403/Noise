@@ -34,8 +34,9 @@ Noise uses independent, local instances of the chosen engine for each audio dire
 
 Upstream license texts are copied into the built application's `Resources/Licenses`.
 The driver also contains its GPL license. Preserve these notices and the driver
-source/build instructions when distributing it. Development builds are locally
-signed; a public release requires distribution signing and notarization.
+source/build instructions when distributing it. Current macOS beta packages are
+ad hoc signed and are not notarized. Production macOS distribution requires
+distribution signing and notarization.
 
 ## Windows desktop components
 

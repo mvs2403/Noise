@@ -1,6 +1,6 @@
 # Noise for Windows
 
-Windows 11 x64. Private beta. Download the setup EXE or portable ZIP from
+Windows 11 x64. Public beta. Download the setup EXE or portable ZIP from
 [the releases](https://github.com/mvs2403/Noise/releases).
 The installer runs per user and includes the .NET runtime, all four filters, and
 the models. No Python, Rust, Visual Studio, or administrator rights are needed
