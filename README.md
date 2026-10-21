@@ -115,9 +115,11 @@ additional model downloads to use the app. A ZIP is available among the
 [release files](https://github.com/mvs2403/Noise/releases/tag/v0.1.0).
 
 > **Beta signing:** this build is ad hoc signed and is **not notarized**.
-> macOS may block its first launch. After trying to open it, follow Apple's
-> per-app [Open Anyway instructions](https://support.apple.com/102445) in
-> **System Settings → Privacy & Security**, if that option is available.
+> If macOS shows **“Noise” Not Opened** and says Apple could not verify it,
+> click **Done**. Open **System Settings → Privacy & Security**, scroll to
+> **Security**, and click **Open Anyway** for Noise. Confirm **Open** when prompted.
+> This saves an exception for this app. See Apple's
+> [Open Anyway instructions](https://support.apple.com/102445).
 > See the [distribution guide](docs/DISTRIBUTION.md) for signing status and checksums.
 
 ## Quick start
@@ -209,6 +211,7 @@ Dock icon so the running app remains reachable.
 
 | Symptom | Check |
 | --- | --- |
+| “Noise” Not Opened; Apple could not verify it | The Mac beta is not notarized. Click Done, then System Settings → Privacy & Security → Open Anyway for Noise, and confirm Open. See the signing note above. |
 | Selected apps are silent or show a connection wait | Respond to any pending macOS audio-recording permission dialog, even if Noise already has a checked entry in Privacy & Security. |
 | No app appears in the chooser | Open it, start audio playback, and use Refresh Apps & Devices in the main window. |
 | Noise Microphone is missing | Install it from Settings, then refresh devices. macOS may need a sign-out/restart if its audio service has not registered the driver. |

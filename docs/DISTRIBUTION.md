@@ -16,10 +16,24 @@ The ZIP contains the same app as a fallback. Extract it and move Noise.app to
 Applications.
 
 This beta has **ad hoc signatures and no Apple notarization ticket**. macOS may
-block its first launch. After trying to open it, follow Apple's per-app
-[Open Anyway instructions](https://support.apple.com/102445) under
-**System Settings → Privacy & Security**, if macOS offers that option. A managed
-Mac may require an administrator-approved distribution build.
+block its first launch with **“Noise” Not Opened** and the message that Apple
+could not verify it is free of malware. To open the downloaded beta after
+checking its source and checksum:
+
+1. Click **Done** in that warning.
+2. Open **System Settings → Privacy & Security** and scroll to **Security**.
+3. Click **Open Anyway** for Noise and authenticate if macOS asks.
+4. Confirm **Open** in the next prompt.
+
+macOS saves this as an exception for the app. If the button is absent, try
+opening Noise again, then return to Privacy & Security. A managed Mac may
+require an administrator-approved distribution build. See Apple's per-app
+[Open Anyway instructions](https://support.apple.com/102445).
+
+A valid ad hoc signature checks bundle integrity but does not establish an
+identified developer or Apple notarization. Removing this first-launch exception
+requirement for ordinary downloads needs the production signing and notarization
+process described below.
 
 Incoming filtering works without an extra driver. For outgoing filtering, open
 **Noise Settings → Outgoing microphone → Set Up Virtual Microphone**. That step
